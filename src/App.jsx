@@ -11,6 +11,14 @@ export default function WorkerMarketplace() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedArea, setSelectedArea] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+
+  // Applied Filter States
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [appliedArea, setAppliedArea] = useState('');
+  const [appliedCategory, setAppliedCategory] = useState('');
+
+  // Advanced Filter Modal / Drawer Toggle State
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   
   // Modal States
   const [detailedWorker, setDetailedWorker] = useState(null); 
@@ -31,28 +39,54 @@ export default function WorkerMarketplace() {
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [isOtherSkillChecked, setIsOtherSkillChecked] = useState(false);
   const [photoFile, setPhotoFile] = useState(null);
+  
   const fileInputRef = useRef(null); 
+  const dropdownRef = useRef(null);
+
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRegSubmitted, setIsRegSubmitted] = useState(false);
 
-  // --- ANIMATED HERO TEXT STATE ---
-  const animatedSkillsList = ["Plumber", "Electrician", "House Cleaner", "AC Repair", "Carpenter", "Maid", "Painter"];
-  const [currentSkillIndex, setCurrentSkillIndex] = useState(0);
+  // Complete list of Mumbai stops across Western, Central, and Harbour lines
+  const defaultMumbaiAreas = [
+    // Western Line
+    "Churchgate", "Marine Lines", "Charni Road", "Grant Road", "Mumbai Central", 
+    "Mahalaxmi", "Lower Parel", "Prabhadevi", "Dadar", "Matunga Road", 
+    "Mahim Junction", "Bandra", "Khar Road", "Santacruz", "Vile Parle", 
+    "Andheri", "Jogeshwari", "Ram Mandir", "Goregaon", "Malad", 
+    "Kandivali", "Borivali", "Dahisar",
+    // Central Line
+    "Masjid", "Sandhurst Road", "Byculla", "Chinchpokli", "Currey Road", 
+    "Parel", "Matunga", "Sion", "Kurla Junction", "Vidyavihar", 
+    "Ghatkopar", "Vikhroli", "Kanjurmarg", "Bhandup", "Nahur", "Mulund",
+    // Harbour Line
+    "Dockyard Road", "Reay Road", "Cotton Green", "Sewri", "Vadala Road", 
+    "King's Circle", "Guru Tegh Bahadur Nagar", "Chunabhatti", "Tilak Nagar", 
+    "Chembur", "Govandi", "Mankhurd"
+  ];
 
-  useEffect(() => {
-    const skillInterval = setInterval(() => {
-      setCurrentSkillIndex((prevIndex) => (prevIndex + 1) % animatedSkillsList.length);
-    }, 2500);
-    return () => clearInterval(skillInterval);
-  }, []);
-
-  const mumbaiAreas = ["Bandra East", "Bandra West", "Khar", "Santacruz", "Vile Parle", "Andheri East", "Andheri West", "Goregaon", "Malad", "Borivali"];
   const standardSkills = ["Electrician", "Plumber", "House Cleaner", "Helper", "Salesman", "AC Repair", "Maid", "Carpenter", "Painter"];
 
-  // --- FETCH DATA ON LOAD ---
+  // --- CLOSE DROPDOWN ON OUTSIDE CLICK ---
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // --- FAST LOADING WITH LOCAL CACHING ---
   useEffect(() => {
     const fetchWorkers = async () => {
+      const cachedData = sessionStorage.getItem('callkar_workers_cache');
+      if (cachedData) {
+        setWorkers(JSON.parse(cachedData));
+        setIsLoading(false);
+      }
+
       try {
         const appsScriptUrl = 'https://script.google.com/macros/s/AKfycby5MHPqsJj5UmaxSWGGaFaD85AIAtoG3b0kMiXy6x3VOxbIBRRGNq-3R2Kt1hO_k3zT8A/exec';
         
@@ -76,6 +110,7 @@ export default function WorkerMarketplace() {
           }));
           
         setWorkers(approvedWorkers);
+        sessionStorage.setItem('callkar_workers_cache', JSON.stringify(approvedWorkers));
       } catch (error) {
         console.error("Error fetching workers:", error);
       } finally {
@@ -86,25 +121,71 @@ export default function WorkerMarketplace() {
     fetchWorkers();
   }, []); 
 
-  // --- DYNAMICALLY EXTRACT ALL CATEGORIES ---
+  // --- DYNAMICALLY EXTRACT ALL AREAS & CATEGORIES ---
+  const mumbaiAreas = Array.from(
+    new Set([
+      ...defaultMumbaiAreas,
+      ...workers.map(w => w.location).filter(Boolean)
+    ])
+  ).sort();
+
   const allAvailableCategories = Array.from(
     new Set(
       workers.flatMap(w => w.skills ? w.skills.split(',').map(s => s.trim()) : [])
     )
   ).filter(Boolean);
 
-  // --- FILTER LOGIC ---
+  // --- BULLETPROOF FLEXIBLE FILTER LOGIC ---
   const filteredWorkers = workers.filter(worker => {
-    const matchesSearchText = 
-      worker.location?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      worker.skills?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      worker.name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const query = appliedSearch.toLowerCase().trim();
+    
+    // 1. Text Search Check
+    const matchesSearch = 
+      query === '' ||
+      worker.name?.toLowerCase().includes(query) ||
+      worker.skills?.toLowerCase().includes(query) ||
+      worker.location?.toLowerCase().includes(query);
 
-    const matchesArea = selectedArea === '' || worker.location === selectedArea;
-    const matchesCategory = selectedCategory === '' || worker.skills?.toLowerCase().includes(selectedCategory.toLowerCase());
+    // 2. Flexible Area Filter Check (handles exact matches, substrings, and station aliases)
+    const workerLoc = worker.location?.toLowerCase().trim() || '';
+    const filterArea = appliedArea.toLowerCase().trim();
+    
+    const matchesArea = 
+      !appliedArea || 
+      workerLoc === filterArea || 
+      workerLoc.includes(filterArea) ||
+      filterArea.includes(workerLoc);
 
-    return matchesSearchText && matchesArea && matchesCategory;
+    // 3. Category Filter Check
+    const workerSkills = worker.skills?.toLowerCase().trim() || '';
+    const filterCat = appliedCategory.toLowerCase().trim();
+    const matchesCategory = !appliedCategory || workerSkills.includes(filterCat);
+
+    return matchesSearch && matchesArea && matchesCategory;
   });
+
+  const handleSearchExecute = () => {
+    setAppliedSearch(searchTerm);
+    setAppliedArea(selectedArea);
+    setAppliedCategory(selectedCategory);
+    setIsFilterOpen(false);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleSearchExecute();
+    }
+  };
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setSelectedArea('');
+    setSelectedCategory('');
+    setAppliedSearch('');
+    setAppliedArea('');
+    setAppliedCategory('');
+    setIsFilterOpen(false);
+  };
 
   const handleSkillToggle = (skill) => {
     if (selectedSkills.includes(skill)) setSelectedSkills(selectedSkills.filter(s => s !== skill));
@@ -224,107 +305,121 @@ export default function WorkerMarketplace() {
     <div className="app-container">
       <style>{`
         body { margin: 0; background-color: #f8fafc; color: #1e293b; -webkit-tap-highlight-color: transparent; }
-        .app-container { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; width: 100%; max-width: 1440px; margin: 0 auto; padding: 24px; box-sizing: border-box; position: relative; min-height: 100vh; padding-bottom: 90px; }
+        .app-container { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; width: 100%; max-width: 1440px; margin: 0 auto; padding: 20px; box-sizing: border-box; position: relative; min-height: 100vh; padding-bottom: 90px; }
         
-        .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 20px 36px; border-radius: 16px; box-shadow: 0 4px 20px -2px rgba(0,0,0,0.05); margin-bottom: 32px; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box; }
-        .header-logo { margin: 0; color: #2563eb; cursor: pointer; font-weight: 800; font-size: 30px; letter-spacing: -0.5px; }
+        .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 14px 24px; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 24px; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box; }
+        .header-logo { margin: 0; color: #2563eb; cursor: pointer; font-weight: 800; font-size: 26px; letter-spacing: -0.5px; }
         
-        .btn-primary { background: #2563eb; color: white; border: none; padding: 12px 24px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 15px; text-decoration: none; display: inline-block; text-align: center; box-sizing: border-box; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
-        .btn-primary:hover { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3); }
+        .btn-primary { background: #2563eb; color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 14px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2); }
+        .btn-primary:hover { background: #1d4ed8; }
         
-        .btn-secondary { background: white; color: #2563eb; border: 1px solid #cbd5e1; padding: 12px 24px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 15px; }
-        .btn-secondary:hover { background: #f1f5f9; border-color: #2563eb; transform: translateY(-1px); }
-        
-        .btn-success { background: #10b981; color: white; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; transition: background 0.2s; text-decoration: none; display: inline-block; text-align: center; box-sizing: border-box; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); width: 100%; }
+        .btn-secondary { background: white; color: #2563eb; border: 1px solid #cbd5e1; padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; }
+        .btn-secondary:hover { background: #f1f5f9; border-color: #2563eb; }
+
+        .btn-success { background: #10b981; color: white; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; transition: background 0.2s; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; width: 100%; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
         .btn-success:hover { background: #059669; }
         .btn-success:disabled { background: #9ca3af; cursor: not-allowed; box-shadow: none; }
 
         .btn-whatsapp { background: #25D366; color: white; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; transition: all 0.2s; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; width: 100%; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.25); }
-        .btn-whatsapp:hover { background: #20ba5a; transform: translateY(-1px); }
+        .btn-whatsapp:hover { background: #20ba5a; }
 
         .btn-call { background: #0284c7; color: white; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; transition: all 0.2s; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; width: 100%; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25); }
-        .btn-call:hover { background: #0369a1; transform: translateY(-1px); }
+        .btn-call:hover { background: #0369a1; }
         
-        .support-float { position: fixed; bottom: 28px; right: 28px; background: #25D366; color: white; padding: 14px 24px; border-radius: 35px; font-weight: bold; box-shadow: 0 6px 20px rgba(37, 211, 102, 0.35); display: flex; align-items: center; gap: 8px; text-decoration: none; z-index: 999; transition: transform 0.2s; font-size: 15px; }
+        .support-float { position: fixed; bottom: 24px; right: 24px; background: #25D366; color: white; padding: 12px 20px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 16px rgba(37, 211, 102, 0.35); display: flex; align-items: center; gap: 6px; text-decoration: none; z-index: 999; font-size: 14px; }
         .support-float:hover { transform: scale(1.05); }
 
-        /* STRICTLY SINGLE-LINE LOCKED HERO BANNER */
-        .hero-banner { text-align: center; margin-bottom: 32px; padding: 10px; height: 60px; display: flex; align-items: center; justify-content: center; width: 100%; box-sizing: border-box; overflow: hidden; white-space: nowrap; }
-        .animated-heading { font-size: clamp(20px, 2.6vw, 32px); font-weight: 800; color: #0f172a; margin: 0; line-height: 1.2; letter-spacing: -0.5px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; width: 100%; }
-        
-        .animated-skill-wrapper { display: inline-block; min-width: 170px; text-align: center; }
-        .animated-skill-span { color: #2563eb; display: inline-block; border-bottom: 4px solid #2563eb; animation: fadeInOut 2.5s infinite; }
-
-        @keyframes fadeInOut {
-          0% { opacity: 0; transform: translateY(6px); }
-          20% { opacity: 1; transform: translateY(0); }
-          80% { opacity: 1; transform: translateY(0); }
-          100% { opacity: 0; transform: translateY(-6px); }
-        }
-
-        /* Loading Spinner */
+        /* LOADING SPINNER */
         .spinner { width: 28px; height: 28px; border: 3px solid #f3f3f3; border-top: 3px solid #10b981; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Professional Filter Dashboard */
-        .search-filter-container { background: white; padding: 36px; border-radius: 20px; box-shadow: 0 10px 30px -5px rgba(0,0,0,0.04); margin-bottom: 40px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 24px; width: 100%; box-sizing: border-box; }
-        .main-search-input { width: 100%; padding: 16px 24px; border: 1px solid #cbd5e1; border-radius: 35px; font-size: 16px; box-sizing: border-box; background: #f8fafc; outline: none; transition: all 0.2s; }
-        .main-search-input:focus { border-color: #2563eb; background: white; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1); }
+        /* SEARCH BAR & FILTER DRAWER */
+        .search-filter-container { background: white; padding: 16px 20px; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 24px; border: 1px solid #e2e8f0; display: flex; gap: 12px; align-items: center; width: 100%; box-sizing: border-box; }
+        .search-bar-wrapper { position: relative; flex: 1; }
+        .main-search-input { width: 100%; padding: 12px 16px 12px 42px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; box-sizing: border-box; background: #f8fafc; outline: none; transition: all 0.2s; }
+        .main-search-input:focus { border-color: #2563eb; background: white; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+        .search-icon-abs { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); font-size: 15px; color: #94a3b8; pointer-events: none; }
         
-        .filters-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; align-items: center; width: 100%; box-sizing: border-box; }
-        .filter-group { display: flex; flex-direction: column; gap: 8px; width: 100%; }
-        .filter-label { font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
-        .filter-select { width: 100%; padding: 14px 18px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 15px; background: white; outline: none; transition: border-color 0.2s; box-sizing: border-box; }
-        .filter-select:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+        .filter-drawer { background: white; padding: 20px; border-radius: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.06); margin-bottom: 24px; border: 1px solid #e2e8f0; display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 14px; align-items: flex-end; box-sizing: border-box; }
+        .filter-group { display: flex; flex-direction: column; gap: 6px; }
+        .filter-label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+        .filter-select { width: 100%; padding: 11px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: white; outline: none; cursor: pointer; color: #334151; box-sizing: border-box; }
+        .filter-select:focus { border-color: #2563eb; }
 
-        .form-card { background: white; padding: 48px; border-radius: 20px; box-shadow: 0 10px 30px -5px rgba(0,0,0,0.05); max-width: 760px; margin: 0 auto; box-sizing: border-box; width: 100%; border: 1px solid #e2e8f0; }
-        .form-group { margin-bottom: 24px; }
-        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; width: 100%; box-sizing: border-box; }
-        .form-label { display: block; font-weight: 600; margin-bottom: 8px; color: #334151; font-size: 15px; }
-        .form-input { width: 100%; padding: 14px 18px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 15px; box-sizing: border-box; transition: all 0.2s; background: #f8fafc; resize: vertical; outline: none; }
-        .form-input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); background: white; }
-        .error-text { color: #ef4444; font-size: 13px; margin-top: 5px; display: block; font-weight: 500; }
+        /* SKELETON LOADING */
+        @keyframes shimmer {
+          0% { background-position: -200px 0; }
+          100% { background-position: calc(200px + 100%) 0; }
+        }
+        .skeleton-card { background: white; border-radius: 16px; border: 1px solid #e2e8f0; padding: 20px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .skeleton-header { display: flex; gap: 16px; align-items: center; }
+        .skeleton-avatar { width: 68px; height: 68px; border-radius: 50%; background: #e2e8f0; background-image: linear-gradient(90deg, #e2e8f0 0px, #f1f5f9 40px, #e2e8f0 80px); background-size: 600px; animation: shimmer 1.5s infinite linear; flex-shrink: 0; }
+        .skeleton-lines { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+        .skeleton-line { height: 14px; border-radius: 4px; background: #e2e8f0; background-image: linear-gradient(90deg, #e2e8f0 0px, #f1f5f9 40px, #e2e8f0 80px); background-size: 600px; animation: shimmer 1.5s infinite linear; }
+        .skeleton-box { height: 44px; border-radius: 10px; background: #e2e8f0; background-image: linear-gradient(90deg, #e2e8f0 0px, #f1f5f9 40px, #e2e8f0 80px); background-size: 600px; animation: shimmer 1.5s infinite linear; }
+        .skeleton-footer { display: flex; gap: 10px; }
+        .skeleton-btn { height: 38px; border-radius: 8px; flex: 1; background: #e2e8f0; background-image: linear-gradient(90deg, #e2e8f0 0px, #f1f5f9 40px, #e2e8f0 80px); background-size: 600px; animation: shimmer 1.5s infinite linear; }
+
+        /* STRICT CARD PROFILE UI WITH LEFT ALIGNMENT */
+        .worker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; width: 100%; box-sizing: border-box; }
+        .profile-card { background: white; border-radius: 16px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.04); transition: transform 0.2s ease, box-shadow 0.2s ease; position: relative; z-index: 1; }
+        .profile-card:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,0.08); border-color: #93c5fd; }
+        
+        .profile-card-header { padding: 20px 20px 16px 20px; display: flex; gap: 16px; align-items: flex-start; border-bottom: 1px solid #f1f5f9; background: linear-gradient(to bottom, #ffffff, #f8fafc); text-align: left; }
+        .profile-avatar-wrapper { position: relative; flex-shrink: 0; }
+        .profile-avatar { width: 68px; height: 68px; border-radius: 50%; object-fit: cover; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.08); background: #bfdbfe; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: bold; color: #1d4ed8; }
+        
+        .profile-info { flex: 1; min-width: 0; text-align: left; }
+        .profile-name-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+        .profile-name { margin: 0; font-size: 18px; font-weight: 700; color: #0f172a; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+        .verified-badge { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; }
+        
+        .profile-skills { font-size: 14px; font-weight: 600; color: #2563eb; margin: 0 0 4px 0; text-transform: capitalize; text-align: left; display: block; }
+        .profile-location { font-size: 13px; color: #64748b; margin: 0; display: flex; align-items: center; gap: 4px; text-align: left; }
+
+        .profile-card-body { padding: 16px 20px; flex: 1; display: flex; flex-direction: column; gap: 14px; }
+        
+        .profile-metrics { display: grid; grid-template-columns: 1fr 1fr; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; text-align: center; }
+        .metric-box:first-child { border-right: 1px solid #e2e8f0; }
+        .metric-val { font-size: 15px; font-weight: 700; color: #0f172a; display: block; }
+        .metric-lbl { font-size: 10px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .profile-bio-box { font-size: 13px; color: #475569; font-style: italic; background: #fdfbf7; border-left: 3px solid #f59e0b; padding: 10px 12px; border-radius: 6px; line-height: 1.4; margin: 0; text-align: left; }
+
+        .profile-card-footer { padding: 16px 20px; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; gap: 10px; }
+
+        /* FORMS & MODALS */
+        .form-card { background: white; padding: 32px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); max-width: 760px; margin: 0 auto; box-sizing: border-box; width: 100%; border: 1px solid #e2e8f0; }
+        .form-group { margin-bottom: 22px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; box-sizing: border-box; }
+        .form-label { display: block; font-weight: 600; margin-bottom: 6px; color: #334151; font-size: 14px; text-align: left; }
+        .form-input { width: 100%; padding: 12px 16px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; box-sizing: border-box; background: #f8fafc; outline: none; }
+        .form-input:focus { border-color: #2563eb; background: white; }
+        .error-text { color: #ef4444; font-size: 12px; margin-top: 4px; display: block; font-weight: 500; text-align: left; }
         
         .multi-select-box { position: relative; width: 100%; user-select: none; box-sizing: border-box; }
-        .multi-select-header { display: flex; flex-wrap: wrap; gap: 8px; min-height: 52px; padding: 10px 18px; border: 1px solid #cbd5e1; border-radius: 12px; background: #f8fafc; cursor: pointer; align-items: center; justify-content: space-between; box-sizing: border-box; }
-        .multi-select-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #cbd5e1; border-radius: 12px; margin-top: 6px; max-height: 240px; overflow-y: auto; z-index: 20; box-shadow: 0 10px 20px -3px rgba(0,0,0,0.1); padding: 14px; display: flex; flex-direction: column; gap: 6px; box-sizing: border-box; }
-        .dropdown-item { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 15px; padding: 9px; color: #475569; border-radius: 8px; }
+        .multi-select-header { display: flex; flex-wrap: wrap; gap: 6px; min-height: 48px; padding: 8px 14px; border: 1px solid #cbd5e1; border-radius: 10px; background: #f8fafc; cursor: pointer; align-items: center; justify-content: space-between; box-sizing: border-box; }
+        .multi-select-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #cbd5e1; border-radius: 10px; margin-top: 6px; max-height: 200px; overflow-y: auto; z-index: 50; box-shadow: 0 10px 25px rgba(0,0,0,0.1); padding: 10px; display: flex; flex-direction: column; gap: 4px; box-sizing: border-box; text-align: left; }
+        .dropdown-item { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; padding: 8px; color: #475569; border-radius: 6px; }
         .dropdown-item input { width: 16px; height: 16px; cursor: pointer; accent-color: #2563eb; }
         
-        .chip { background: #dbeafe; color: #1e40af; padding: 5px 10px; border-radius: 6px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+        .chip { background: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
         .chip-close { cursor: pointer; font-weight: bold; color: #1e3a8a; }
         
-        .file-dropzone { border: 2px dashed #cbd5e1; background: #f8fafc; padding: 32px; text-align: center; border-radius: 12px; cursor: pointer; transition: background 0.2s; box-sizing: border-box; width: 100%; }
-        .file-dropzone:hover { background: #f1f5f9; }
-        .file-dropzone.has-file { border: 2px solid #10b981; background: #f0fdf4; cursor: default; }
-        .file-icon { font-size: 34px; color: #94a3b8; margin-bottom: 8px; display: block; }
-        
-        /* WORKER GRID */
-        .worker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 28px; width: 100%; box-sizing: border-box; }
-        .worker-card { background: white; padding: 26px; border-radius: 20px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.3s ease; box-sizing: border-box; box-shadow: 0 4px 16px -2px rgba(0,0,0,0.03); }
-        .worker-card:hover { transform: translateY(-4px); box-shadow: 0 18px 32px -6px rgba(0,0,0,0.08); border-color: #93c5fd; }
-        
-        .worker-bio { font-size: 14px; color: #475569; line-height: 1.5; margin: 16px 0; background: #f8fafc; padding: 14px; border-radius: 12px; border-left: 3px solid #2563eb; font-style: italic; }
-        
-        .worker-stats { display: flex; justify-content: space-between; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; padding: 12px 0; margin-top: 12px; margin-bottom: 16px; }
-        .stat-item { text-align: center; flex: 1; }
-        .stat-value { font-weight: bold; color: #1e293b; font-size: 15px; display: block; }
-        .stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+        .file-dropzone { border: 2px dashed #cbd5e1; background: #f8fafc; padding: 24px; text-align: center; border-radius: 10px; cursor: pointer; box-sizing: border-box; width: 100%; }
+        .file-icon { font-size: 28px; color: #94a3b8; margin-bottom: 6px; display: block; }
 
-        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.65); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(5px); padding: 20px; box-sizing: border-box; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.65); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); padding: 16px; box-sizing: border-box; }
 
-        @media (max-width: 768px) {
-          .app-container { padding: 16px; }
-          .header { padding: 16px 20px; margin-bottom: 24px; }
-          .header-logo { font-size: 24px; }
-          .form-card { padding: 24px; }
-          .search-filter-container { padding: 20px; }
-          .filters-row { grid-template-columns: 1fr; gap: 16px; }
+        @media (max-width: 640px) {
+          .app-container { padding: 12px; }
+          .header { padding: 12px 16px; margin-bottom: 16px; }
+          .header-logo { font-size: 20px; }
+          .btn-primary, .btn-secondary { padding: 9px 14px; font-size: 13px; }
+          .search-filter-container { padding: 12px; gap: 8px; }
+          .filter-drawer { grid-template-columns: 1fr; gap: 10px; padding: 16px; }
           .form-row { grid-template-columns: 1fr; gap: 0; }
-          .animated-heading { font-size: clamp(16px, 4.5vw, 22px); }
-          .hero-banner { height: 50px; margin-bottom: 20px; }
-          .animated-skill-wrapper { min-width: 120px; }
-          .worker-grid { grid-template-columns: 1fr; }
+          .form-card { padding: 20px; }
         }
       `}</style>
 
@@ -338,40 +433,50 @@ export default function WorkerMarketplace() {
             </button>
           ) : (
             <button className="btn-secondary" onClick={() => setCurrentView('home')}>
-              ← Back to Home
+              ← Home
             </button>
           )}
         </div>
       </div>
 
-      {/* PAGE 1: HOME & FILTERS */}
+      {/* PAGE 1: HOME & SEARCH */}
       {currentView === 'home' && (
         <div>
-          {/* STRICTLY SINGLE-LINE LOCKED HERO BANNER */}
-          <div className="hero-banner">
-            <h2 className="animated-heading">
-              <span>Book</span>
-              <span className="animated-skill-wrapper">
-                <span className="animated-skill-span">{animatedSkillsList[currentSkillIndex]}</span>
-              </span>
-              <span>near you</span>
-            </h2>
+          <div className="search-filter-container">
+            <div className="search-bar-wrapper">
+              <span className="search-icon-abs">🔍</span>
+              <input 
+                type="text" 
+                className="main-search-input" 
+                placeholder="Search name, service, keyword..." 
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={handleKeyDown} 
+              />
+            </div>
+
+            <button className="btn-primary" style={{ padding: '12px 18px' }} onClick={handleSearchExecute}>
+              Search
+            </button>
+
+            <button className="btn-secondary" onClick={() => setIsFilterOpen(!isFilterOpen)}>
+              ⚙️ Filters {(appliedArea || appliedCategory) ? '• Active' : ''}
+            </button>
+
+            {(appliedArea || appliedCategory || appliedSearch) && (
+              <button className="btn-secondary" style={{ padding: '12px 14px', color: '#ef4444', borderColor: '#fca5a5' }} onClick={handleResetFilters} title="Reset All">
+                ✕ Reset
+              </button>
+            )}
           </div>
 
-          <div className="search-filter-container">
-            <input 
-              type="text" 
-              className="main-search-input" 
-              placeholder="Search by specialist name, service, or keyword..." 
-              value={searchTerm} 
-              onChange={(e) => setSearchTerm(e.target.value)} 
-            />
-
-            <div className="filters-row">
+          {/* EXPANDABLE FILTER DRAWER */}
+          {isFilterOpen && (
+            <div className="filter-drawer">
               <div className="filter-group">
-                <label className="filter-label">Service Area</label>
+                <label className="filter-label">Service Area / Station</label>
                 <select className="filter-select" value={selectedArea} onChange={(e) => setSelectedArea(e.target.value)}>
-                  <option value="">All Mumbai Areas</option>
+                  <option value="">All Mumbai Stops</option>
                   {mumbaiAreas.map(area => <option key={area} value={area}>{area}</option>)}
                 </select>
               </div>
@@ -383,59 +488,94 @@ export default function WorkerMarketplace() {
                   {allAvailableCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
               </div>
+
+              <button className="btn-primary" style={{ padding: '11px 18px', height: '43px' }} onClick={handleSearchExecute}>
+                Apply Filters
+              </button>
+
+              <button className="btn-secondary" style={{ padding: '11px 16px', height: '43px' }} onClick={handleResetFilters}>
+                Clear
+              </button>
             </div>
-          </div>
+          )}
 
           {isLoading ? (
-            <div style={{ textAlign: 'center', padding: '80px', color: '#64748b', fontSize: '16px', fontWeight: '500' }}>
-              Loading specialists in your area...
+            <div className="worker-grid">
+              {[1, 2, 3, 4, 5, 6].map((n) => (
+                <div key={n} className="skeleton-card">
+                  <div className="skeleton-header">
+                    <div className="skeleton-avatar"></div>
+                    <div className="skeleton-lines">
+                      <div className="skeleton-line" style={{ width: '70%' }}></div>
+                      <div className="skeleton-line" style={{ width: '45%' }}></div>
+                      <div className="skeleton-line" style={{ width: '55%' }}></div>
+                    </div>
+                  </div>
+                  <div className="skeleton-box"></div>
+                  <div className="skeleton-footer">
+                    <div className="skeleton-btn"></div>
+                    <div className="skeleton-btn"></div>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : filteredWorkers.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '80px', color: '#64748b', fontSize: '16px', fontWeight: '500' }}>
-              No specialists found matching your filter criteria.
+            <div style={{ textAlign: 'center', padding: '60px 20px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', margin: '20px 0' }}>
+              <div style={{ fontSize: '42px', marginBottom: '12px' }}>🔍</div>
+              <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', color: '#1e293b' }}>No specialists found</h3>
+              <p style={{ color: '#64748b', fontSize: '14px', margin: '0 0 16px 0' }}>We couldn't find any professionals matching your search or filters.</p>
+              <button className="btn-primary" onClick={handleResetFilters}>Reset Search & Filters</button>
             </div>
           ) : (
             <div className="worker-grid">
               {filteredWorkers.map(worker => (
-                <div key={worker.id} className="worker-card">
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '14px' }}>
+                <div key={worker.id} className="profile-card">
+                  {/* PROFILE HEADER */}
+                  <div className="profile-card-header">
+                    <div className="profile-avatar-wrapper">
                       {worker.photoUrl ? (
-                        <img src={worker.photoUrl} alt={worker.name} style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #bfdbfe' }} />
+                        <img src={worker.photoUrl} alt={worker.name} className="profile-avatar" />
                       ) : (
-                        <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#bfdbfe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', fontWeight: 'bold', color: '#1d4ed8' }}>
+                        <div className="profile-avatar">
                           {worker.name ? worker.name.charAt(0) : 'W'}
                         </div>
                       )}
-                      <div>
-                        <h3 style={{ margin: '0 0 6px 0', fontSize: '19px', textTransform: 'capitalize' }}>{worker.name}</h3>
-                        <span style={{ background: '#dcfce7', color: '#166534', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold' }}>✓ Verified</span>
-                      </div>
                     </div>
-                    
-                    <p style={{ margin: '12px 0 6px 0', color: '#1e293b', fontSize: '15px', fontWeight: '600', textTransform: 'capitalize' }}>🛠️ {worker.skills}</p>
-                    <p style={{ margin: '0 0 12px 0', color: '#64748b', fontSize: '14px' }}>📍 {worker.location}</p>
-                    
-                    <div className="worker-stats">
-                      <div className="stat-item" style={{ borderRight: '1px solid #f1f5f9' }}>
-                        <span className="stat-value">{worker.experience} yrs</span>
-                        <span className="stat-label">Experience</span>
+                    <div className="profile-info">
+                      <div className="profile-name-row">
+                        <h3 className="profile-name">{worker.name}</h3>
+                        <span className="verified-badge">✓ Verified</span>
                       </div>
-                      <div className="stat-item">
-                        <span className="stat-value">₹{worker.hourlyRate}</span>
-                        <span className="stat-label">Per Hour</span>
+                      <p className="profile-skills">🛠️ {worker.skills}</p>
+                      <p className="profile-location">📍 {worker.location}</p>
+                    </div>
+                  </div>
+
+                  {/* PROFILE BODY */}
+                  <div className="profile-card-body">
+                    <div className="profile-metrics">
+                      <div className="metric-box">
+                        <span className="metric-val">{worker.experience} Years</span>
+                        <span className="metric-lbl">Experience</span>
+                      </div>
+                      <div className="metric-box">
+                        <span className="metric-val">₹{worker.hourlyRate}/hr</span>
+                        <span className="metric-lbl">Rate</span>
                       </div>
                     </div>
 
-                    {worker.bio && <div className="worker-bio">"{worker.bio}"</div>}
+                    {worker.bio && (
+                      <p className="profile-bio-box">"{worker.bio}"</p>
+                    )}
                   </div>
-                  
-                  <div style={{ display: 'flex', gap: '12px', marginTop: 'auto' }}>
-                    <button className="btn-secondary" style={{ flex: 1, padding: '11px' }} onClick={() => setDetailedWorker(worker)}>
-                      Details
+
+                  {/* PROFILE FOOTER ACTIONS */}
+                  <div className="profile-card-footer">
+                    <button className="btn-secondary" style={{ flex: 1, padding: '10px', fontSize: '13px' }} onClick={() => setDetailedWorker(worker)}>
+                      View Details
                     </button>
-                    <button className="btn-primary" style={{ flex: 1, padding: '11px' }} onClick={() => { setSelectedWorker(worker); setIsBookSubmitted(false); setCustomerData({name: '', phone: ''}); }}>
-                      Contact
+                    <button className="btn-primary" style={{ flex: 1, padding: '10px', fontSize: '13px' }} onClick={() => { setSelectedWorker(worker); setIsBookSubmitted(false); setCustomerData({name: '', phone: ''}); }}>
+                      Contact Now
                     </button>
                   </div>
                 </div>
@@ -448,9 +588,9 @@ export default function WorkerMarketplace() {
       {/* PAGE 2: REGISTRATION FORM */}
       {currentView === 'register' && (
         <div className="form-card">
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '30px', margin: '0 0 8px 0', fontWeight: '800' }}>Partner With CallKar</h2>
-            <p style={{ color: '#64748b', margin: 0, fontSize: '16px' }}>Register your services and start getting hired.</p>
+          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+            <h2 style={{ fontSize: '26px', margin: '0 0 6px 0', fontWeight: '800' }}>Partner With CallKar</h2>
+            <p style={{ color: '#64748b', margin: 0, fontSize: '15px' }}>Register your services and start getting hired.</p>
           </div>
 
           {!isRegSubmitted ? (
@@ -475,61 +615,62 @@ export default function WorkerMarketplace() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Primary Service Area <span style={{color: 'red'}}>*</span></label>
+                <label className="form-label">Primary Service Area / Station <span style={{color: 'red'}}>*</span></label>
                 <select className="form-input" value={regData.area} onChange={(e) => setRegData({...regData, area: e.target.value})}>
-                  <option value="">Select your area...</option>
+                  <option value="">Select your area / station...</option>
                   {mumbaiAreas.map(area => <option key={area} value={area}>{area}</option>)}
                 </select>
                 {errors.area && <span className="error-text">{errors.area}</span>}
               </div>
 
-              <div className="form-group">
+              {/* MULTI-SELECT DROPDOWN WITH OUTSIDE CLICK CLOSE */}
+              <div className="form-group" ref={dropdownRef}>
                 <label className="form-label">Work Categories <span style={{color: 'red'}}>*</span></label>
                 <div className="multi-select-box">
                   <div className="multi-select-header" onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
-                    {selectedSkills.length === 0 && !isOtherSkillChecked ? <span style={{ color: '#9ca3af', fontSize: '15px' }}>Select services...</span> : (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {selectedSkills.length === 0 && !isOtherSkillChecked ? <span style={{ color: '#9ca3af', fontSize: '14px' }}>Select services...</span> : (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                         {selectedSkills.map(skill => <span key={skill} className="chip">{skill} <span className="chip-close" onClick={(e) => removeSkill(e, skill)}>×</span></span>)}
                         {isOtherSkillChecked && <span className="chip" style={{ background: '#f3e8ff', color: '#7e22ce' }}>Other <span className="chip-close" onClick={(e) => { e.stopPropagation(); setIsOtherSkillChecked(false); }}>×</span></span>}
                       </div>
                     )}
-                    <span style={{ color: '#64748b', fontSize: '12px' }}>▼</span>
+                    <span style={{ color: '#64748b', fontSize: '10px' }}>▼</span>
                   </div>
                   {isDropdownOpen && (
                     <div className="multi-select-dropdown">
                       {standardSkills.map(skill => <label key={skill} className="dropdown-item"><input type="checkbox" checked={selectedSkills.includes(skill)} onChange={() => handleSkillToggle(skill)} /> {skill}</label>)}
-                      <label className="dropdown-item" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '8px' }}><input type="checkbox" checked={isOtherSkillChecked} onChange={() => setIsOtherSkillChecked(!isOtherSkillChecked)} /> Other</label>
+                      <label className="dropdown-item" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '6px' }}><input type="checkbox" checked={isOtherSkillChecked} onChange={() => setIsOtherSkillChecked(!isOtherSkillChecked)} /> Other</label>
                     </div>
                   )}
                 </div>
-                {isOtherSkillChecked && <input type="text" className="form-input" style={{marginTop: '10px'}} placeholder="Type skill here..." value={regData.otherSkill} onChange={(e) => setRegData({...regData, otherSkill: e.target.value})} />}
+                {isOtherSkillChecked && <input type="text" className="form-input" style={{marginTop: '8px'}} placeholder="Type skill here..." value={regData.otherSkill} onChange={(e) => setRegData({...regData, otherSkill: e.target.value})} />}
                 {errors.skills && <span className="error-text">{errors.skills}</span>}
               </div>
 
               <div className="form-row form-group">
-                <div><label className="form-label">Years of Experience <span style={{color: 'red'}}>*</span></label><input type="number" className="form-input" value={regData.experience} onChange={(e) => setRegData({...regData, experience: e.target.value})} />{errors.experience && <span className="error-text">{errors.experience}</span>}</div>
+                <div><label className="form-label">Experience (Yrs) <span style={{color: 'red'}}>*</span></label><input type="number" className="form-input" value={regData.experience} onChange={(e) => setRegData({...regData, experience: e.target.value})} />{errors.experience && <span className="error-text">{errors.experience}</span>}</div>
                 <div><label className="form-label">Hourly Rate (₹) <span style={{color: 'red'}}>*</span></label><input type="number" className="form-input" value={regData.hourlyRate} onChange={(e) => setRegData({...regData, hourlyRate: e.target.value})} />{errors.hourlyRate && <span className="error-text">{errors.hourlyRate}</span>}</div>
               </div>
               
-              <div className="form-group"><label className="form-label">About Me / Bio</label><textarea className="form-input" rows="3" value={regData.bio} onChange={(e) => setRegData({...regData, bio: e.target.value})}></textarea></div>
-              <div className="form-group"><label className="form-label">Complete Home Address <span style={{color: 'red'}}>*</span></label><textarea className="form-input" rows="3" value={regData.address} onChange={(e) => setRegData({...regData, address: e.target.value})}></textarea>{errors.address && <span className="error-text">{errors.address}</span>}</div>
+              <div className="form-group"><label className="form-label">About Me / Bio</label><textarea className="form-input" rows="2" value={regData.bio} onChange={(e) => setRegData({...regData, bio: e.target.value})}></textarea></div>
+              <div className="form-group"><label className="form-label">Complete Home Address <span style={{color: 'red'}}>*</span></label><textarea className="form-input" rows="2" value={regData.address} onChange={(e) => setRegData({...regData, address: e.target.value})}></textarea>{errors.address && <span className="error-text">{errors.address}</span>}</div>
 
               <div className="form-group">
                 <label className="form-label">Upload Profile Photo <span style={{color: 'red'}}>*</span></label>
                 <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
-                <div className={`file-dropzone ${photoFile ? 'has-file' : ''}`} onClick={() => !photoFile && fileInputRef.current.click()} >
-                  {!photoFile ? <div><span className="file-icon">📸</span><p style={{ margin: '0', fontSize: '15px' }}>Click to browse photos</p></div> : <div><span className="file-icon" style={{ color: '#10b981' }}>✅</span><p style={{ margin: '0', fontSize: '15px' }}>{photoFile.name}</p><button type="button" onClick={(e) => { e.stopPropagation(); setPhotoFile(null); }} style={{ marginTop: '10px', background: 'none', border: '1px solid #10b981', color: '#10b981', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }} > Remove Photo </button></div>}
+                <div className="file-dropzone" onClick={() => !photoFile && fileInputRef.current.click()} >
+                  {!photoFile ? <div><span className="file-icon">📸</span><p style={{ margin: '0', fontSize: '14px' }}>Click to browse photo</p></div> : <div><span className="file-icon" style={{ color: '#10b981' }}>✅</span><p style={{ margin: '0', fontSize: '14px' }}>{photoFile.name}</p><button type="button" onClick={(e) => { e.stopPropagation(); setPhotoFile(null); }} style={{ marginTop: '8px', background: 'none', border: '1px solid #10b981', color: '#10b981', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }} > Remove </button></div>}
                 </div>
                 {errors.photo && <span className="error-text">{errors.photo}</span>}
               </div>
 
-              <button type="submit" className="btn-success" style={{ width: '100%', marginTop: '14px' }} disabled={isSubmitting}>{isSubmitting ? 'Processing...' : 'Submit Registration'}</button>
+              <button type="submit" className="btn-success" style={{ width: '100%', marginTop: '10px' }} disabled={isSubmitting}>{isSubmitting ? 'Processing...' : 'Submit Registration'}</button>
             </form>
           ) : (
-            <div style={{ textAlign: 'center', padding: '40px 10px' }}>
-              <div style={{ width: '80px', height: '80px', background: '#dcfce7', color: '#166534', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '38px', margin: '0 auto 16px auto' }}>✓</div>
+            <div style={{ textAlign: 'center', padding: '30px 10px' }}>
+              <div style={{ width: '64px', height: '64px', background: '#dcfce7', color: '#166534', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', margin: '0 auto 12px auto' }}>✓</div>
               <h3>Application Received!</h3>
-              <button className="btn-primary" onClick={() => setCurrentView('home')} style={{ marginTop: '16px' }}>Return to Home</button>
+              <button className="btn-primary" onClick={() => setCurrentView('home')} style={{ marginTop: '12px' }}>Return to Home</button>
             </div>
           )}
         </div>
@@ -538,37 +679,37 @@ export default function WorkerMarketplace() {
       {/* FULL DETAILS MODAL */}
       {detailedWorker && (
         <div className="modal-overlay">
-          <div className="form-card" style={{ maxWidth: '480px', position: 'relative' }}>
-            <button onClick={() => setDetailedWorker(null)} style={{ position: 'absolute', top: '16px', right: '22px', cursor: 'pointer', border: 'none', background: 'none', fontSize: '28px', color: '#94a3b8' }}>&times;</button>
+          <div className="form-card" style={{ maxWidth: '420px', position: 'relative' }}>
+            <button onClick={() => setDetailedWorker(null)} style={{ position: 'absolute', top: '12px', right: '16px', cursor: 'pointer', border: 'none', background: 'none', fontSize: '24px', color: '#94a3b8' }}>&times;</button>
             
-            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '14px' }}>
               {detailedWorker.photoUrl ? (
-                <img src={detailedWorker.photoUrl} alt={detailedWorker.name} style={{ width: '92px', height: '92px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #bfdbfe', marginBottom: '10px' }} />
+                <img src={detailedWorker.photoUrl} alt={detailedWorker.name} style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #bfdbfe', marginBottom: '8px' }} />
               ) : (
-                <div style={{ width: '92px', height: '92px', borderRadius: '50%', background: '#bfdbfe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: 'bold', color: '#1d4ed8', margin: '0 auto 10px auto' }}>
+                <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: '#bfdbfe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', fontWeight: 'bold', color: '#1d4ed8', margin: '0 auto 8px auto' }}>
                   {detailedWorker.name ? detailedWorker.name.charAt(0) : 'W'}
                 </div>
               )}
-              <h2 style={{ margin: '0 0 6px 0', textTransform: 'capitalize', fontSize: '23px' }}>{detailedWorker.name}</h2>
-              <span style={{ background: '#dcfce7', color: '#166534', padding: '4px 12px', borderRadius: '15px', fontSize: '13px', fontWeight: 'bold' }}>✓ Verified</span>
+              <h2 style={{ margin: '0 0 4px 0', textTransform: 'capitalize', fontSize: '20px' }}>{detailedWorker.name}</h2>
+              <span style={{ background: '#dcfce7', color: '#166534', padding: '2px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>✓ Verified</span>
             </div>
 
-            <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '14px', marginBottom: '20px', border: '1px solid #e2e8f0', fontSize: '15px' }}>
-              <p style={{ margin: '0 0 10px 0' }}><strong style={{ color: '#334151' }}>Skills:</strong> <span style={{ color: '#475569', textTransform: 'capitalize' }}>{detailedWorker.skills}</span></p>
-              <p style={{ margin: '0 0 10px 0' }}><strong style={{ color: '#334151' }}>Service Area:</strong> <span style={{ color: '#475569' }}>{detailedWorker.location}</span></p>
-              <p style={{ margin: '0 0 10px 0' }}><strong style={{ color: '#334151' }}>Experience:</strong> <span style={{ color: '#475569' }}>{detailedWorker.experience} Years</span></p>
-              <p style={{ margin: '0 0 10px 0' }}><strong style={{ color: '#334151' }}>Hourly Charges:</strong> <span style={{ color: '#475569' }}>₹{detailedWorker.hourlyRate} / hour</span></p>
+            <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '10px', marginBottom: '16px', border: '1px solid #e2e8f0', fontSize: '14px', textAlign: 'left' }}>
+              <p style={{ margin: '0 0 8px 0' }}><strong style={{ color: '#334151' }}>Skills:</strong> <span style={{ color: '#475569', textTransform: 'capitalize' }}>{detailedWorker.skills}</span></p>
+              <p style={{ margin: '0 0 8px 0' }}><strong style={{ color: '#334151' }}>Service Area:</strong> <span style={{ color: '#475569' }}>{detailedWorker.location}</span></p>
+              <p style={{ margin: '0 0 8px 0' }}><strong style={{ color: '#334151' }}>Experience:</strong> <span style={{ color: '#475569' }}>{detailedWorker.experience} Years</span></p>
+              <p style={{ margin: '0 0 8px 0' }}><strong style={{ color: '#334151' }}>Hourly Charges:</strong> <span style={{ color: '#475569' }}>₹{detailedWorker.hourlyRate} / hour</span></p>
               {detailedWorker.bio && (
-                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
-                  <strong style={{ color: '#334151', display: 'block', marginBottom: '4px' }}>About Me:</strong>
-                  <p style={{ margin: 0, color: '#475569', fontStyle: 'italic', lineHeight: '1.5' }}>"{detailedWorker.bio}"</p>
+                <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
+                  <strong style={{ color: '#334151', display: 'block', marginBottom: '2px' }}>About Me:</strong>
+                  <p style={{ margin: 0, color: '#475569', fontStyle: 'italic', fontSize: '13px', lineHeight: '1.4' }}>"{detailedWorker.bio}"</p>
                 </div>
               )}
             </div>
 
             <button 
               className="btn-primary" 
-              style={{ width: '100%', fontSize: '16px', padding: '14px' }} 
+              style={{ width: '100%', fontSize: '15px', padding: '12px' }} 
               onClick={() => { 
                 setSelectedWorker(detailedWorker); 
                 setDetailedWorker(null); 
@@ -585,9 +726,9 @@ export default function WorkerMarketplace() {
       {/* CONTACT / BOOKING MODAL */}
       {selectedWorker && currentView === 'home' && (
         <div className="modal-overlay">
-          <div className="form-card" style={{ maxWidth: '440px', position: 'relative' }}>
-            <button onClick={() => setSelectedWorker(null)} style={{ position: 'absolute', top: '16px', right: '22px', cursor: 'pointer', border: 'none', background: 'none', fontSize: '26px', color: '#94a3b8' }}>&times;</button>
-            <h2 style={{ textTransform: 'capitalize', fontSize: '22px', margin: '0 0 16px 0' }}>Contact {selectedWorker.name}</h2>
+          <div className="form-card" style={{ maxWidth: '380px', position: 'relative' }}>
+            <button onClick={() => setSelectedWorker(null)} style={{ position: 'absolute', top: '12px', right: '16px', cursor: 'pointer', border: 'none', background: 'none', fontSize: '24px', color: '#94a3b8' }}>&times;</button>
+            <h2 style={{ textTransform: 'capitalize', fontSize: '19px', margin: '0 0 14px 0', textAlign: 'left' }}>Contact {selectedWorker.name}</h2>
             
             {!isVerifying && !isBookSubmitted && (
               <form onSubmit={handleBookingSubmit}>
@@ -598,21 +739,21 @@ export default function WorkerMarketplace() {
             )}
 
             {isVerifying && (
-              <div style={{ textAlign: 'center', padding: '30px 0' }}>
+              <div style={{ textAlign: 'center', padding: '24px 0' }}>
                 <div className="spinner"></div>
-                <p style={{ color: '#64748b', fontWeight: '600', fontSize: '15px', margin: '12px 0 0 0' }}>Verifying & logging details...</p>
+                <p style={{ color: '#64748b', fontWeight: '600', fontSize: '14px', margin: '10px 0 0 0' }}>Verifying details...</p>
               </div>
             )}
 
             {!isVerifying && isBookSubmitted && (
-              <div style={{ textAlign: 'center', padding: '12px 0' }}>
-                <p style={{ color: '#166534', fontWeight: 'bold', fontSize: '17px', marginBottom: '20px' }}>Details Verified Successfully!</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ textAlign: 'center', padding: '10px 0' }}>
+                <p style={{ color: '#166534', fontWeight: 'bold', fontSize: '16px', marginBottom: '16px' }}>Details Verified!</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <a href={`tel:${selectedWorker.rawPhone || selectedWorker.phone}`} className="btn-call">
-                    📞 Call Specialist Directly
+                    📞 Call Specialist
                   </a>
                   <a href={`https://wa.me/91${selectedWorker.phone}?text=Hi%20${selectedWorker.name},%20I%20found%20you%20on%20CallKar%20and%20need%20your%20services.`} target="_blank" rel="noreferrer" className="btn-whatsapp">
-                    💬 Connect on WhatsApp
+                    💬 WhatsApp Connect
                   </a>
                 </div>
               </div>
