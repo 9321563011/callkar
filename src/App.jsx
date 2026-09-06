@@ -1,35 +1,171 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+
+const globalStyles = `
+  body { margin: 0; background-color: #f8fafc; color: #1e293b; -webkit-tap-highlight-color: transparent; }
+  .app-container { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; width: 100%; max-width: 1440px; margin: 0 auto; padding: 20px; box-sizing: border-box; position: relative; min-height: 100vh; padding-bottom: 90px; }
+  
+  .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 14px 24px; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 24px; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box; }
+  .header-logo { margin: 0; color: #2563eb; cursor: pointer; font-weight: 800; font-size: 26px; letter-spacing: -0.5px; }
+  
+  /* --- REMOVABLE TOP BANNER --- */
+  .top-promo-banner { background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%); color: white; padding: 22px 32px; border-radius: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 30px rgba(37, 99, 235, 0.25); position: relative; overflow: hidden; box-sizing: border-box; gap: 24px; }
+  .top-promo-banner::before { content: ''; position: absolute; top: -60px; right: -60px; width: 200px; height: 200px; background: rgba(255, 255, 255, 0.08); border-radius: 50%; pointer-events: none; }
+  .top-promo-content { flex: 1; min-width: 0; }
+  .top-promo-badge { background: rgba(255, 255, 255, 0.2); color: #eff6ff; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; margin-bottom: 8px; }
+  .top-promo-title { margin: 0 0 6px 0; font-size: 22px; font-weight: 800; letter-spacing: -0.4px; }
+  .top-promo-text { margin: 0; font-size: 14px; opacity: 0.92; line-height: 1.45; max-width: 720px; }
+  .top-promo-actions { display: flex; gap: 12px; align-items: center; flex-shrink: 0; }
+  .top-btn-light { background: white; color: #1e40af; border: none; padding: 12px 20px; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.2s; text-decoration: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: inline-flex; align-items: center; justify-content: center; }
+  .top-btn-light:hover { background: #f8fafc; transform: translateY(-2px); }
+  .top-banner-close { background: none; border: none; color: rgba(255, 255, 255, 0.75); font-size: 22px; cursor: pointer; padding: 4px; transition: color 0.2s; }
+  .top-banner-close:hover { color: white; }
+
+  .btn-primary { background: #2563eb; color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 14px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2); }
+  .btn-primary:hover { background: #1d4ed8; }
+  
+  .btn-secondary { background: white; color: #2563eb; border: 1px solid #cbd5e1; padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; }
+  .btn-secondary:hover { background: #f1f5f9; border-color: #2563eb; }
+
+  .btn-success { background: #10b981; color: white; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; transition: background 0.2s; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; width: 100%; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
+  .btn-success:hover { background: #059669; }
+  .btn-success:disabled { background: #9ca3af; cursor: not-allowed; box-shadow: none; }
+
+  .btn-whatsapp { background: #25D366; color: white; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; transition: all 0.2s; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; width: 100%; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.25); }
+  .btn-whatsapp:hover { background: #20ba5a; }
+
+  .btn-call { background: #0284c7; color: white; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; transition: all 0.2s; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; width: 100%; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25); }
+  .btn-call:hover { background: #0369a1; }
+  
+  .support-float { position: fixed; bottom: 24px; right: 24px; background: #25D366; color: white; padding: 12px 20px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 16px rgba(37, 211, 102, 0.35); display: flex; align-items: center; gap: 6px; text-decoration: none; z-index: 999; font-size: 14px; }
+  .support-float:hover { transform: scale(1.05); }
+
+  .spinner { width: 28px; height: 28px; border: 3px solid #f3f3f3; border-top: 3px solid #10b981; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px auto; }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+  .search-filter-container { background: white; padding: 16px 20px; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 24px; border: 1px solid #e2e8f0; display: flex; gap: 12px; align-items: center; width: 100%; box-sizing: border-box; }
+  .search-bar-wrapper { position: relative; flex: 1; }
+  .main-search-input { width: 100%; padding: 12px 16px 12px 42px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; box-sizing: border-box; background: #f8fafc; color: #1e293b !important; -webkit-text-fill-color: #1e293b !important; outline: none; transition: all 0.2s; }
+  .main-search-input:focus { border-color: #2563eb; background: white; color: #1e293b !important; -webkit-text-fill-color: #1e293b !important; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+  .search-icon-abs { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); font-size: 15px; color: #94a3b8; pointer-events: none; }
+  
+  .filter-drawer { background: white; padding: 20px; border-radius: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.06); margin-bottom: 24px; border: 1px solid #e2e8f0; display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 14px; align-items: flex-end; box-sizing: border-box; }
+  .filter-group { display: flex; flex-direction: column; gap: 6px; }
+  .filter-label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+  .filter-select { width: 100%; padding: 11px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: white; color: #1e293b !important; outline: none; cursor: pointer; box-sizing: border-box; }
+  .filter-select:focus { border-color: #2563eb; }
+
+  @keyframes shimmer {
+    0% { background-position: -200px 0; }
+    100% { background-position: calc(200px + 100%) 0; }
+  }
+  .skeleton-card { background: white; border-radius: 16px; border: 1px solid #e2e8f0; padding: 20px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+  .skeleton-header { display: flex; gap: 16px; align-items: center; }
+  .skeleton-avatar { width: 68px; height: 68px; border-radius: 50%; background: #e2e8f0; background-image: linear-gradient(90deg, #e2e8f0 0px, #f1f5f9 40px, #e2e8f0 80px); background-size: 600px; animation: shimmer 1.5s infinite linear; flex-shrink: 0; }
+  .skeleton-lines { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .skeleton-line { height: 14px; border-radius: 4px; background: #e2e8f0; background-image: linear-gradient(90deg, #e2e8f0 0px, #f1f5f9 40px, #e2e8f0 80px); background-size: 600px; animation: shimmer 1.5s infinite linear; }
+  .skeleton-box { height: 44px; border-radius: 10px; background: #e2e8f0; background-image: linear-gradient(90deg, #e2e8f0 0px, #f1f5f9 40px, #e2e8f0 80px); background-size: 600px; animation: shimmer 1.5s infinite linear; }
+  .skeleton-footer { display: flex; gap: 10px; }
+  .skeleton-btn { height: 38px; border-radius: 8px; flex: 1; background: #e2e8f0; background-image: linear-gradient(90deg, #e2e8f0 0px, #f1f5f9 40px, #e2e8f0 80px); background-size: 600px; animation: shimmer 1.5s infinite linear; }
+
+  .worker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; width: 100%; box-sizing: border-box; }
+  .profile-card { background: white; border-radius: 16px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.04); transition: transform 0.2s ease, box-shadow 0.2s ease; position: relative; z-index: 1; }
+  .profile-card:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,0.08); border-color: #93c5fd; }
+  
+  .profile-card-header { padding: 20px 20px 16px 20px; display: flex; gap: 16px; align-items: flex-start; border-bottom: 1px solid #f1f5f9; background: linear-gradient(to bottom, #ffffff, #f8fafc); text-align: left; }
+  .profile-avatar-wrapper { position: relative; flex-shrink: 0; }
+  .profile-avatar { width: 68px; height: 68px; border-radius: 50%; object-fit: cover; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.08); background: #bfdbfe; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: bold; color: #1d4ed8; }
+  
+  .profile-info { flex: 1; min-width: 0; text-align: left; }
+  .profile-name-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .profile-name { margin: 0; font-size: 18px; font-weight: 700; color: #0f172a; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+  .verified-badge { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; }
+  
+  .profile-skills { font-size: 14px; font-weight: 600; color: #2563eb; margin: 0 0 4px 0; text-transform: capitalize; text-align: left; display: block; }
+  .profile-location { font-size: 13px; color: #64748b; margin: 0; display: flex; align-items: center; gap: 4px; text-align: left; }
+
+  .profile-card-body { padding: 16px 20px; flex: 1; display: flex; flex-direction: column; gap: 14px; }
+  
+  .profile-metrics { display: grid; grid-template-columns: 1fr 1fr; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; text-align: center; }
+  .metric-box:first-child { border-right: 1px solid #e2e8f0; }
+  .metric-val { font-size: 15px; font-weight: 700; color: #0f172a; display: block; }
+  .metric-lbl { font-size: 10px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .profile-bio-box { font-size: 13px; color: #475569; font-style: italic; background: #fdfbf7; border-left: 3px solid #f59e0b; padding: 10px 12px; border-radius: 6px; line-height: 1.4; margin: 0; text-align: left; }
+  .profile-card-footer { padding: 16px 20px; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; gap: 10px; }
+
+  .form-card { background: white; padding: 32px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); max-width: 760px; margin: 0 auto; box-sizing: border-box; width: 100%; border: 1px solid #e2e8f0; }
+  .form-group { margin-bottom: 22px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; box-sizing: border-box; }
+  .form-label { display: block; font-weight: 600; margin-bottom: 6px; color: #334151; font-size: 14px; text-align: left; }
+  .form-input { width: 100%; padding: 12px 16px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; box-sizing: border-box; background: #f8fafc; color: #1e293b !important; -webkit-text-fill-color: #1e293b !important; outline: none; }
+  .form-input:focus { border-color: #2563eb; background: white; color: #1e293b !important; -webkit-text-fill-color: #1e293b !important; }
+  .error-text { color: #ef4444; font-size: 12px; margin-top: 4px; display: block; font-weight: 500; text-align: left; }
+  
+  .multi-select-box { position: relative; width: 100%; user-select: none; box-sizing: border-box; }
+  .multi-select-header { display: flex; flex-wrap: wrap; gap: 6px; min-height: 48px; padding: 8px 14px; border: 1px solid #cbd5e1; border-radius: 10px; background: #f8fafc; cursor: pointer; align-items: center; justify-content: space-between; box-sizing: border-box; }
+  .multi-select-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #cbd5e1; border-radius: 10px; margin-top: 6px; max-height: 200px; overflow-y: auto; z-index: 50; box-shadow: 0 10px 25px rgba(0,0,0,0.1); padding: 10px; display: flex; flex-direction: column; gap: 4px; box-sizing: border-box; text-align: left; }
+  .dropdown-item { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; padding: 8px; color: #475569; border-radius: 6px; }
+  .dropdown-item input { width: 16px; height: 16px; cursor: pointer; accent-color: #2563eb; }
+  
+  .chip { background: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+  .chip-close { cursor: pointer; font-weight: bold; color: #1e3a8a; }
+  
+  .file-dropzone { border: 2px dashed #cbd5e1; background: #f8fafc; padding: 24px; text-align: center; border-radius: 10px; cursor: pointer; box-sizing: border-box; width: 100%; }
+  .file-icon { font-size: 28px; color: #94a3b8; margin-bottom: 6px; display: block; }
+  .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.65); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); padding: 16px; box-sizing: border-box; }
+
+  @media (max-width: 768px) {
+    .top-promo-banner { flex-direction: column; align-items: flex-start; padding: 20px; }
+    .top-promo-actions { width: 100%; display: flex; gap: 10px; }
+    .top-btn-light { flex: 1; text-align: center; }
+  }
+
+  @media (max-width: 640px) {
+    .app-container { padding: 12px; }
+    .header { padding: 12px 16px; margin-bottom: 16px; }
+    .header-logo { font-size: 20px; }
+    .btn-primary, .btn-secondary { padding: 9px 14px; font-size: 13px; }
+    .search-filter-container { padding: 12px; gap: 8px; }
+    .filter-drawer { grid-template-columns: 1fr; gap: 10px; padding: 16px; }
+    .form-row { grid-template-columns: 1fr; gap: 0; }
+    .form-card { padding: 20px; }
+  }
+`;
+
+if (typeof document !== 'undefined') {
+  const styleTag = document.createElement('style');
+  styleTag.innerHTML = globalStyles;
+  if (!document.getElementById('global-injected-styles')) {
+    styleTag.id = 'global-injected-styles';
+    document.head.appendChild(styleTag);
+  }
+}
 
 export default function WorkerMarketplace() {
   const [currentView, setCurrentView] = useState('home');
 
-  // --- MARKETPLACE STATE ---
   const [workers, setWorkers] = useState([]); 
   const [isLoading, setIsLoading] = useState(true); 
   
-  // Search & Filter States
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedArea, setSelectedArea] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
 
-  // Applied Filter States
   const [appliedSearch, setAppliedSearch] = useState('');
   const [appliedArea, setAppliedArea] = useState('');
   const [appliedCategory, setAppliedCategory] = useState('');
 
-  // Advanced Filter Modal / Drawer Toggle State
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [showPopup, setShowPopup] = useState(true); // Removable promotional popup
+  const [showBanner, setShowBanner] = useState(true); // Removable top banner
   
-  // Modal States
   const [detailedWorker, setDetailedWorker] = useState(null); 
   const [selectedWorker, setSelectedWorker] = useState(null); 
   
-  // Booking State
   const [customerData, setCustomerData] = useState({ name: '', phone: '' });
   const [isVerifying, setIsVerifying] = useState(false);
   const [isBookSubmitted, setIsBookSubmitted] = useState(false);
 
-  // --- REGISTRATION STATE ---
   const [regData, setRegData] = useState({
     fullName: '', phone: '', whatsapp: '', area: '', 
     experience: '', hourlyRate: '', address: '', otherSkill: '', bio: ''
@@ -47,19 +183,15 @@ export default function WorkerMarketplace() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRegSubmitted, setIsRegSubmitted] = useState(false);
 
-  // Complete list of Mumbai stops across Western, Central, and Harbour lines
   const defaultMumbaiAreas = [
-    // Western Line
     "Churchgate", "Marine Lines", "Charni Road", "Grant Road", "Mumbai Central", 
     "Mahalaxmi", "Lower Parel", "Prabhadevi", "Dadar", "Matunga Road", 
     "Mahim Junction", "Bandra", "Khar Road", "Santacruz", "Vile Parle", 
     "Andheri", "Jogeshwari", "Ram Mandir", "Goregaon", "Malad", 
     "Kandivali", "Borivali", "Dahisar",
-    // Central Line
     "Masjid", "Sandhurst Road", "Byculla", "Chinchpokli", "Currey Road", 
     "Parel", "Matunga", "Sion", "Kurla Junction", "Vidyavihar", 
     "Ghatkopar", "Vikhroli", "Kanjurmarg", "Bhandup", "Nahur", "Mulund",
-    // Harbour Line
     "Dockyard Road", "Reay Road", "Cotton Green", "Sewri", "Vadala Road", 
     "King's Circle", "Guru Tegh Bahadur Nagar", "Chunabhatti", "Tilak Nagar", 
     "Chembur", "Govandi", "Mankhurd"
@@ -67,7 +199,6 @@ export default function WorkerMarketplace() {
 
   const standardSkills = ["Electrician", "Plumber", "House Cleaner", "Helper", "Salesman", "AC Repair", "Maid", "Carpenter", "Painter"];
 
-  // --- CLOSE DROPDOWN ON OUTSIDE CLICK ---
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -78,18 +209,11 @@ export default function WorkerMarketplace() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // --- FAST LOADING WITH LOCAL CACHING ---
   useEffect(() => {
     const fetchWorkers = async () => {
-      const cachedData = sessionStorage.getItem('callkar_workers_cache');
-      if (cachedData) {
-        setWorkers(JSON.parse(cachedData));
-        setIsLoading(false);
-      }
-
+      setIsLoading(true);
       try {
         const appsScriptUrl = 'https://script.google.com/macros/s/AKfycby5MHPqsJj5UmaxSWGGaFaD85AIAtoG3b0kMiXy6x3VOxbIBRRGNq-3R2Kt1hO_k3zT8A/exec';
-        
         const response = await fetch(appsScriptUrl);
         const data = await response.json();
         
@@ -99,7 +223,7 @@ export default function WorkerMarketplace() {
             id: worker.workerId || 'WK-1', 
             name: worker.fullName, 
             skills: worker.skills,
-            location: worker.area, 
+            location: worker.area ? worker.area.trim() : '', 
             phone: worker.whatsapp, 
             rawPhone: worker.phone,
             bio: worker.bio,
@@ -110,7 +234,6 @@ export default function WorkerMarketplace() {
           }));
           
         setWorkers(approvedWorkers);
-        sessionStorage.setItem('callkar_workers_cache', JSON.stringify(approvedWorkers));
       } catch (error) {
         console.error("Error fetching workers:", error);
       } finally {
@@ -119,62 +242,59 @@ export default function WorkerMarketplace() {
     };
 
     fetchWorkers();
-  }, []); 
+  }, [currentView]); 
 
-  // --- DYNAMICALLY EXTRACT ALL AREAS & CATEGORIES ---
-  const mumbaiAreas = Array.from(
-    new Set([
-      ...defaultMumbaiAreas,
-      ...workers.map(w => w.location).filter(Boolean)
-    ])
-  ).sort();
+  const activeWorkerAreas = useMemo(() => {
+    return Array.from(
+      new Set(workers.map(w => w.location).filter(Boolean))
+    ).sort();
+  }, [workers]);
 
-  const allAvailableCategories = Array.from(
-    new Set(
-      workers.flatMap(w => w.skills ? w.skills.split(',').map(s => s.trim()) : [])
-    )
-  ).filter(Boolean);
+  const registrationAreas = useMemo(() => {
+    return Array.from(
+      new Set([...defaultMumbaiAreas, ...workers.map(w => w.location).filter(Boolean)])
+    ).sort();
+  }, [workers]);
 
-  // --- BULLETPROOF FLEXIBLE FILTER LOGIC ---
-  const filteredWorkers = workers.filter(worker => {
-    const query = appliedSearch.toLowerCase().trim();
-    
-    // 1. Text Search Check
-    const matchesSearch = 
-      query === '' ||
-      worker.name?.toLowerCase().includes(query) ||
-      worker.skills?.toLowerCase().includes(query) ||
-      worker.location?.toLowerCase().includes(query);
+  const dynamicCategories = useMemo(() => {
+    const targetWorkers = selectedArea 
+      ? workers.filter(w => w.location?.toLowerCase().trim() === selectedArea.toLowerCase().trim())
+      : workers;
 
-    // 2. Flexible Area Filter Check (handles exact matches, substrings, and station aliases)
-    const workerLoc = worker.location?.toLowerCase().trim() || '';
-    const filterArea = appliedArea.toLowerCase().trim();
-    
-    const matchesArea = 
-      !appliedArea || 
-      workerLoc === filterArea || 
-      workerLoc.includes(filterArea) ||
-      filterArea.includes(workerLoc);
+    return Array.from(
+      new Set(
+        targetWorkers.flatMap(w => w.skills ? w.skills.split(',').map(s => s.trim()) : [])
+      )
+    ).filter(Boolean);
+  }, [workers, selectedArea]);
 
-    // 3. Category Filter Check
-    const workerSkills = worker.skills?.toLowerCase().trim() || '';
-    const filterCat = appliedCategory.toLowerCase().trim();
-    const matchesCategory = !appliedCategory || workerSkills.includes(filterCat);
+  const filteredWorkers = useMemo(() => {
+    return workers.filter(worker => {
+      const query = appliedSearch.toLowerCase().trim();
+      
+      const matchesSearch = 
+        query === '' ||
+        worker.name?.toLowerCase().includes(query) ||
+        worker.skills?.toLowerCase().includes(query) ||
+        worker.location?.toLowerCase().includes(query);
 
-    return matchesSearch && matchesArea && matchesCategory;
-  });
+      const workerLoc = worker.location?.toLowerCase().trim() || '';
+      const filterArea = appliedArea.toLowerCase().trim();
+      const matchesArea = !filterArea || workerLoc === filterArea;
 
-  const handleSearchExecute = () => {
+      const workerSkills = worker.skills?.toLowerCase().trim() || '';
+      const filterCat = appliedCategory.toLowerCase().trim();
+      const matchesCategory = !filterCat || workerSkills.includes(filterCat);
+
+      return matchesSearch && matchesArea && matchesCategory;
+    });
+  }, [workers, appliedSearch, appliedArea, appliedCategory]);
+
+  const handleApplyFilters = () => {
     setAppliedSearch(searchTerm);
     setAppliedArea(selectedArea);
     setAppliedCategory(selectedCategory);
     setIsFilterOpen(false);
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      handleSearchExecute();
-    }
   };
 
   const handleResetFilters = () => {
@@ -303,126 +423,6 @@ export default function WorkerMarketplace() {
   // --- UI RENDERING ---
   return (
     <div className="app-container">
-      <style>{`
-        body { margin: 0; background-color: #f8fafc; color: #1e293b; -webkit-tap-highlight-color: transparent; }
-        .app-container { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; width: 100%; max-width: 1440px; margin: 0 auto; padding: 20px; box-sizing: border-box; position: relative; min-height: 100vh; padding-bottom: 90px; }
-        
-        .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 14px 24px; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 24px; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box; }
-        .header-logo { margin: 0; color: #2563eb; cursor: pointer; font-weight: 800; font-size: 26px; letter-spacing: -0.5px; }
-        
-        .btn-primary { background: #2563eb; color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 14px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2); }
-        .btn-primary:hover { background: #1d4ed8; }
-        
-        .btn-secondary { background: white; color: #2563eb; border: 1px solid #cbd5e1; padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; }
-        .btn-secondary:hover { background: #f1f5f9; border-color: #2563eb; }
-
-        .btn-success { background: #10b981; color: white; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; transition: background 0.2s; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; width: 100%; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
-        .btn-success:hover { background: #059669; }
-        .btn-success:disabled { background: #9ca3af; cursor: not-allowed; box-shadow: none; }
-
-        .btn-whatsapp { background: #25D366; color: white; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; transition: all 0.2s; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; width: 100%; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.25); }
-        .btn-whatsapp:hover { background: #20ba5a; }
-
-        .btn-call { background: #0284c7; color: white; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; transition: all 0.2s; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; width: 100%; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25); }
-        .btn-call:hover { background: #0369a1; }
-        
-        .support-float { position: fixed; bottom: 24px; right: 24px; background: #25D366; color: white; padding: 12px 20px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 16px rgba(37, 211, 102, 0.35); display: flex; align-items: center; gap: 6px; text-decoration: none; z-index: 999; font-size: 14px; }
-        .support-float:hover { transform: scale(1.05); }
-
-        /* LOADING SPINNER */
-        .spinner { width: 28px; height: 28px; border: 3px solid #f3f3f3; border-top: 3px solid #10b981; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* SEARCH BAR & FILTER DRAWER */
-        .search-filter-container { background: white; padding: 16px 20px; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 24px; border: 1px solid #e2e8f0; display: flex; gap: 12px; align-items: center; width: 100%; box-sizing: border-box; }
-        .search-bar-wrapper { position: relative; flex: 1; }
-        .main-search-input { width: 100%; padding: 12px 16px 12px 42px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; box-sizing: border-box; background: #f8fafc; outline: none; transition: all 0.2s; }
-        .main-search-input:focus { border-color: #2563eb; background: white; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
-        .search-icon-abs { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); font-size: 15px; color: #94a3b8; pointer-events: none; }
-        
-        .filter-drawer { background: white; padding: 20px; border-radius: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.06); margin-bottom: 24px; border: 1px solid #e2e8f0; display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 14px; align-items: flex-end; box-sizing: border-box; }
-        .filter-group { display: flex; flex-direction: column; gap: 6px; }
-        .filter-label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
-        .filter-select { width: 100%; padding: 11px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: white; outline: none; cursor: pointer; color: #334151; box-sizing: border-box; }
-        .filter-select:focus { border-color: #2563eb; }
-
-        /* SKELETON LOADING */
-        @keyframes shimmer {
-          0% { background-position: -200px 0; }
-          100% { background-position: calc(200px + 100%) 0; }
-        }
-        .skeleton-card { background: white; border-radius: 16px; border: 1px solid #e2e8f0; padding: 20px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
-        .skeleton-header { display: flex; gap: 16px; align-items: center; }
-        .skeleton-avatar { width: 68px; height: 68px; border-radius: 50%; background: #e2e8f0; background-image: linear-gradient(90deg, #e2e8f0 0px, #f1f5f9 40px, #e2e8f0 80px); background-size: 600px; animation: shimmer 1.5s infinite linear; flex-shrink: 0; }
-        .skeleton-lines { flex: 1; display: flex; flex-direction: column; gap: 8px; }
-        .skeleton-line { height: 14px; border-radius: 4px; background: #e2e8f0; background-image: linear-gradient(90deg, #e2e8f0 0px, #f1f5f9 40px, #e2e8f0 80px); background-size: 600px; animation: shimmer 1.5s infinite linear; }
-        .skeleton-box { height: 44px; border-radius: 10px; background: #e2e8f0; background-image: linear-gradient(90deg, #e2e8f0 0px, #f1f5f9 40px, #e2e8f0 80px); background-size: 600px; animation: shimmer 1.5s infinite linear; }
-        .skeleton-footer { display: flex; gap: 10px; }
-        .skeleton-btn { height: 38px; border-radius: 8px; flex: 1; background: #e2e8f0; background-image: linear-gradient(90deg, #e2e8f0 0px, #f1f5f9 40px, #e2e8f0 80px); background-size: 600px; animation: shimmer 1.5s infinite linear; }
-
-        /* STRICT CARD PROFILE UI WITH LEFT ALIGNMENT */
-        .worker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; width: 100%; box-sizing: border-box; }
-        .profile-card { background: white; border-radius: 16px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.04); transition: transform 0.2s ease, box-shadow 0.2s ease; position: relative; z-index: 1; }
-        .profile-card:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,0.08); border-color: #93c5fd; }
-        
-        .profile-card-header { padding: 20px 20px 16px 20px; display: flex; gap: 16px; align-items: flex-start; border-bottom: 1px solid #f1f5f9; background: linear-gradient(to bottom, #ffffff, #f8fafc); text-align: left; }
-        .profile-avatar-wrapper { position: relative; flex-shrink: 0; }
-        .profile-avatar { width: 68px; height: 68px; border-radius: 50%; object-fit: cover; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.08); background: #bfdbfe; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: bold; color: #1d4ed8; }
-        
-        .profile-info { flex: 1; min-width: 0; text-align: left; }
-        .profile-name-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
-        .profile-name { margin: 0; font-size: 18px; font-weight: 700; color: #0f172a; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
-        .verified-badge { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; }
-        
-        .profile-skills { font-size: 14px; font-weight: 600; color: #2563eb; margin: 0 0 4px 0; text-transform: capitalize; text-align: left; display: block; }
-        .profile-location { font-size: 13px; color: #64748b; margin: 0; display: flex; align-items: center; gap: 4px; text-align: left; }
-
-        .profile-card-body { padding: 16px 20px; flex: 1; display: flex; flex-direction: column; gap: 14px; }
-        
-        .profile-metrics { display: grid; grid-template-columns: 1fr 1fr; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; text-align: center; }
-        .metric-box:first-child { border-right: 1px solid #e2e8f0; }
-        .metric-val { font-size: 15px; font-weight: 700; color: #0f172a; display: block; }
-        .metric-lbl { font-size: 10px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
-
-        .profile-bio-box { font-size: 13px; color: #475569; font-style: italic; background: #fdfbf7; border-left: 3px solid #f59e0b; padding: 10px 12px; border-radius: 6px; line-height: 1.4; margin: 0; text-align: left; }
-
-        .profile-card-footer { padding: 16px 20px; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; gap: 10px; }
-
-        /* FORMS & MODALS */
-        .form-card { background: white; padding: 32px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); max-width: 760px; margin: 0 auto; box-sizing: border-box; width: 100%; border: 1px solid #e2e8f0; }
-        .form-group { margin-bottom: 22px; }
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; box-sizing: border-box; }
-        .form-label { display: block; font-weight: 600; margin-bottom: 6px; color: #334151; font-size: 14px; text-align: left; }
-        .form-input { width: 100%; padding: 12px 16px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; box-sizing: border-box; background: #f8fafc; outline: none; }
-        .form-input:focus { border-color: #2563eb; background: white; }
-        .error-text { color: #ef4444; font-size: 12px; margin-top: 4px; display: block; font-weight: 500; text-align: left; }
-        
-        .multi-select-box { position: relative; width: 100%; user-select: none; box-sizing: border-box; }
-        .multi-select-header { display: flex; flex-wrap: wrap; gap: 6px; min-height: 48px; padding: 8px 14px; border: 1px solid #cbd5e1; border-radius: 10px; background: #f8fafc; cursor: pointer; align-items: center; justify-content: space-between; box-sizing: border-box; }
-        .multi-select-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #cbd5e1; border-radius: 10px; margin-top: 6px; max-height: 200px; overflow-y: auto; z-index: 50; box-shadow: 0 10px 25px rgba(0,0,0,0.1); padding: 10px; display: flex; flex-direction: column; gap: 4px; box-sizing: border-box; text-align: left; }
-        .dropdown-item { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; padding: 8px; color: #475569; border-radius: 6px; }
-        .dropdown-item input { width: 16px; height: 16px; cursor: pointer; accent-color: #2563eb; }
-        
-        .chip { background: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
-        .chip-close { cursor: pointer; font-weight: bold; color: #1e3a8a; }
-        
-        .file-dropzone { border: 2px dashed #cbd5e1; background: #f8fafc; padding: 24px; text-align: center; border-radius: 10px; cursor: pointer; box-sizing: border-box; width: 100%; }
-        .file-icon { font-size: 28px; color: #94a3b8; margin-bottom: 6px; display: block; }
-
-        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.65); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); padding: 16px; box-sizing: border-box; }
-
-        @media (max-width: 640px) {
-          .app-container { padding: 12px; }
-          .header { padding: 12px 16px; margin-bottom: 16px; }
-          .header-logo { font-size: 20px; }
-          .btn-primary, .btn-secondary { padding: 9px 14px; font-size: 13px; }
-          .search-filter-container { padding: 12px; gap: 8px; }
-          .filter-drawer { grid-template-columns: 1fr; gap: 10px; padding: 16px; }
-          .form-row { grid-template-columns: 1fr; gap: 0; }
-          .form-card { padding: 20px; }
-        }
-      `}</style>
-
       {/* HEADER */}
       <div className="header">
         <h1 className="header-logo" onClick={() => setCurrentView('home')}>CallKar</h1>
@@ -439,9 +439,50 @@ export default function WorkerMarketplace() {
         </div>
       </div>
 
+      {/* REMOVABLE PROMOTIONAL POPUP (Appears on visit/refresh) */}
+      {showPopup && currentView === 'home' && (
+        <div className="modal-overlay">
+          <div className="form-card" style={{ maxWidth: '440px', textAlign: 'center', position: 'relative', padding: '36px 28px' }}>
+            <button onClick={() => setShowPopup(false)} style={{ position: 'absolute', top: '14px', right: '18px', cursor: 'pointer', border: 'none', background: 'none', fontSize: '26px', color: '#94a3b8' }}>&times;</button>
+            <div style={{ fontSize: '48px', marginBottom: '12px' }}>🌟</div>
+            <h2 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 10px 0', color: '#0f172a' }}>Welcome to CallKar!</h2>
+            <p style={{ color: '#64748b', fontSize: '15px', lineHeight: '1.5', margin: '0 0 24px 0' }}>
+              Book verified local specialists across Mumbai stations instantly, or join our network as a specialist to grow your business!
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button className="btn-primary" style={{ padding: '12px', fontSize: '15px' }} onClick={() => setShowPopup(false)}>
+                🔍 Book a Specialist Now
+              </button>
+              <button className="btn-secondary" style={{ padding: '12px', fontSize: '15px' }} onClick={() => { setShowPopup(false); setCurrentView('register'); }}>
+                💼 Join as a Specialist
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* PAGE 1: HOME & SEARCH */}
       {currentView === 'home' && (
         <div>
+          {/* REMOVABLE TOP BANNER FOR JOINING */}
+          {showBanner && (
+            <div className="top-promo-banner">
+              <div className="top-promo-content">
+                <span className="top-promo-badge">✨ Mumbai's #1 Local Marketplace</span>
+                <h2 className="top-promo-title">Book Trusted Specialists or Grow Your Business</h2>
+                <p className="top-promo-text">
+                  Connect instantly with verified electricians, plumbers, and local professionals near your station, or register your own profile to start receiving direct client bookings!
+                </p>
+              </div>
+              <div className="top-promo-actions">
+                <button className="top-btn-light" onClick={() => { setCurrentView('register'); setIsRegSubmitted(false); setErrors({}); }}>
+                  Join as a Specialist
+                </button>
+                <button className="top-banner-close" onClick={() => setShowBanner(false)} title="Close Banner">&times;</button>
+              </div>
+            </div>
+          )}
+
           <div className="search-filter-container">
             <div className="search-bar-wrapper">
               <span className="search-icon-abs">🔍</span>
@@ -450,12 +491,12 @@ export default function WorkerMarketplace() {
                 className="main-search-input" 
                 placeholder="Search name, service, keyword..." 
                 value={searchTerm} 
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={handleKeyDown} 
+                onChange={(e) => setSearchTerm(e.target.value)} 
+                onKeyDown={(e) => e.key === 'Enter' && handleApplyFilters()}
               />
             </div>
 
-            <button className="btn-primary" style={{ padding: '12px 18px' }} onClick={handleSearchExecute}>
+            <button className="btn-primary" onClick={handleApplyFilters}>
               Search
             </button>
 
@@ -463,8 +504,8 @@ export default function WorkerMarketplace() {
               ⚙️ Filters {(appliedArea || appliedCategory) ? '• Active' : ''}
             </button>
 
-            {(appliedArea || appliedCategory || appliedSearch) && (
-              <button className="btn-secondary" style={{ padding: '12px 14px', color: '#ef4444', borderColor: '#fca5a5' }} onClick={handleResetFilters} title="Reset All">
+            {(appliedArea || appliedCategory || appliedSearch || searchTerm || selectedArea || selectedCategory) && (
+              <button className="btn-secondary" style={{ color: '#ef4444', borderColor: '#fca5a5' }} onClick={handleResetFilters} title="Reset All">
                 ✕ Reset
               </button>
             )}
@@ -475,9 +516,16 @@ export default function WorkerMarketplace() {
             <div className="filter-drawer">
               <div className="filter-group">
                 <label className="filter-label">Service Area / Station</label>
-                <select className="filter-select" value={selectedArea} onChange={(e) => setSelectedArea(e.target.value)}>
-                  <option value="">All Mumbai Stops</option>
-                  {mumbaiAreas.map(area => <option key={area} value={area}>{area}</option>)}
+                <select 
+                  className="filter-select" 
+                  value={selectedArea} 
+                  onChange={(e) => {
+                    setSelectedArea(e.target.value);
+                    setSelectedCategory('');
+                  }}
+                >
+                  <option value="">All Available Areas</option>
+                  {activeWorkerAreas.map(area => <option key={area} value={area}>{area}</option>)}
                 </select>
               </div>
 
@@ -485,11 +533,11 @@ export default function WorkerMarketplace() {
                 <label className="filter-label">Work Category</label>
                 <select className="filter-select" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
                   <option value="">All Categories</option>
-                  {allAvailableCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                  {dynamicCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
               </div>
 
-              <button className="btn-primary" style={{ padding: '11px 18px', height: '43px' }} onClick={handleSearchExecute}>
+              <button className="btn-primary" style={{ padding: '11px 18px', height: '43px' }} onClick={handleApplyFilters}>
                 Apply Filters
               </button>
 
@@ -618,7 +666,7 @@ export default function WorkerMarketplace() {
                 <label className="form-label">Primary Service Area / Station <span style={{color: 'red'}}>*</span></label>
                 <select className="form-input" value={regData.area} onChange={(e) => setRegData({...regData, area: e.target.value})}>
                   <option value="">Select your area / station...</option>
-                  {mumbaiAreas.map(area => <option key={area} value={area}>{area}</option>)}
+                  {registrationAreas.map(area => <option key={area} value={area}>{area}</option>)}
                 </select>
                 {errors.area && <span className="error-text">{errors.area}</span>}
               </div>
