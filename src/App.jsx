@@ -2,133 +2,174 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 
 const globalStyles = `
   body { margin: 0; background-color: #f8fafc; color: #1e293b; -webkit-tap-highlight-color: transparent; }
-  .app-container { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; width: 100%; max-width: 1440px; margin: 0 auto; padding: 20px; box-sizing: border-box; position: relative; min-height: 100vh; padding-bottom: 90px; }
+  .app-container { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; width: 100%; max-width: 1440px; margin: 0 auto; padding: 24px; box-sizing: border-box; position: relative; min-height: 100vh; padding-bottom: 90px; }
   
-  .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 14px 24px; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 24px; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box; }
-  .header-logo { margin: 0; color: #2563eb; cursor: pointer; font-weight: 800; font-size: 26px; letter-spacing: -0.5px; }
+  .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 16px 28px; border-radius: 16px; box-shadow: 0 4px 20px rgba(37, 99, 235, 0.05); margin-bottom: 24px; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box; }
+  .header-logo { margin: 0; color: #2563eb; cursor: pointer; font-weight: 800; font-size: 28px; letter-spacing: -0.5px; }
+  .header-logo span { color: #1e40af; }
   
-  /* --- REMOVABLE TOP BANNER --- */
-  .top-promo-banner { background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%); color: white; padding: 22px 32px; border-radius: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 30px rgba(37, 99, 235, 0.25); position: relative; overflow: hidden; box-sizing: border-box; gap: 24px; }
-  .top-promo-banner::before { content: ''; position: absolute; top: -60px; right: -60px; width: 200px; height: 200px; background: rgba(255, 255, 255, 0.08); border-radius: 50%; pointer-events: none; }
-  .top-promo-content { flex: 1; min-width: 0; }
-  .top-promo-badge { background: rgba(255, 255, 255, 0.2); color: #eff6ff; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; margin-bottom: 8px; }
-  .top-promo-title { margin: 0 0 6px 0; font-size: 22px; font-weight: 800; letter-spacing: -0.4px; }
-  .top-promo-text { margin: 0; font-size: 14px; opacity: 0.92; line-height: 1.45; max-width: 720px; }
+  /* --- UNIVERSAL INPUT CROSS-BROWSER/OS VISIBILITY FIX --- */
+  input, select, textarea, button {
+    color: #1e293b !important;
+    -webkit-text-fill-color: #1e293b !important;
+    opacity: 1 !important;
+    -webkit-opacity: 1 !important;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+  }
+  input::placeholder, textarea::placeholder {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+    opacity: 1 !important;
+  }
+
+  /* --- PROFESSIONAL ROYAL BLUE TOP BANNER --- */
+  .top-promo-banner { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); color: white; padding: 28px 36px; border-radius: 20px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 12px 30px rgba(37, 99, 235, 0.25); position: relative; overflow: hidden; box-sizing: border-box; gap: 24px; animation: slideDown 0.4s ease-out; }
+  .top-promo-banner::before { content: ''; position: absolute; top: -60px; right: -60px; width: 200px; height: 200px; background: rgba(255, 255, 255, 0.1); border-radius: 50%; pointer-events: none; }
+  .top-promo-content { flex: 1; min-width: 0; text-align: left; }
+  .top-promo-badge { background: rgba(255, 255, 255, 0.2); color: #eff6ff; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; margin-bottom: 10px; border: 1px solid rgba(255, 255, 255, 0.3); }
+  .top-promo-title { margin: 0 0 6px 0; font-size: 24px; font-weight: 800; letter-spacing: -0.4px; }
+  .top-promo-text { margin: 0; font-size: 14px; opacity: 0.92; line-height: 1.5; max-width: 720px; }
   .top-promo-actions { display: flex; gap: 12px; align-items: center; flex-shrink: 0; }
-  .top-btn-light { background: white; color: #1e40af; border: none; padding: 12px 20px; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.2s; text-decoration: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: inline-flex; align-items: center; justify-content: center; }
+  .top-btn-light { background: white; color: #1e40af; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.2s; text-decoration: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: inline-flex; align-items: center; justify-content: center; }
   .top-btn-light:hover { background: #f8fafc; transform: translateY(-2px); }
   .top-banner-close { background: none; border: none; color: rgba(255, 255, 255, 0.75); font-size: 22px; cursor: pointer; padding: 4px; transition: color 0.2s; }
   .top-banner-close:hover { color: white; }
 
-  .btn-primary { background: #2563eb; color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 14px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2); }
+  .btn-primary { background: #2563eb; color: white !important; -webkit-text-fill-color: white !important; border: none; padding: 11px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 14px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2); white-space: nowrap; flex-shrink: 0; }
   .btn-primary:hover { background: #1d4ed8; }
   
-  .btn-secondary { background: white; color: #2563eb; border: 1px solid #cbd5e1; padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; }
-  .btn-secondary:hover { background: #f1f5f9; border-color: #2563eb; }
+  .btn-secondary { background: white; color: #2563eb !important; -webkit-text-fill-color: #2563eb !important; border: 1px solid #cbd5e1; padding: 11px 18px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; white-space: nowrap; flex-shrink: 0; }
+  .btn-secondary:hover { background: #f8fafc; border-color: #2563eb; }
 
-  .btn-success { background: #10b981; color: white; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; transition: background 0.2s; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; width: 100%; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
+  .btn-success { background: #10b981; color: white !important; -webkit-text-fill-color: white !important; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 16px; transition: background 0.2s; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; width: 100%; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); }
   .btn-success:hover { background: #059669; }
-  .btn-success:disabled { background: #9ca3af; cursor: not-allowed; box-shadow: none; }
+  .btn-success:disabled { background: #94a3b8; cursor: not-allowed; box-shadow: none; }
 
-  .btn-whatsapp { background: #25D366; color: white; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; transition: all 0.2s; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; width: 100%; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.25); }
+  .btn-whatsapp { background: #25D366; color: white !important; -webkit-text-fill-color: white !important; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 16px; transition: all 0.2s; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; width: 100%; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.25); }
   .btn-whatsapp:hover { background: #20ba5a; }
 
-  .btn-call { background: #0284c7; color: white; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; transition: all 0.2s; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; width: 100%; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25); }
+  .btn-call { background: #0284c7; color: white !important; -webkit-text-fill-color: white !important; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 16px; transition: all 0.2s; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; width: 100%; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25); }
   .btn-call:hover { background: #0369a1; }
   
-  .support-float { position: fixed; bottom: 24px; right: 24px; background: #25D366; color: white; padding: 12px 20px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 16px rgba(37, 211, 102, 0.35); display: flex; align-items: center; gap: 6px; text-decoration: none; z-index: 999; font-size: 14px; }
+  .support-float { position: fixed; bottom: 24px; right: 24px; background: #25D366; color: white !important; -webkit-text-fill-color: white !important; padding: 12px 20px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 16px rgba(37, 211, 102, 0.35); display: flex; align-items: center; gap: 6px; text-decoration: none; z-index: 999; font-size: 14px; }
   .support-float:hover { transform: scale(1.05); }
 
-  .spinner { width: 28px; height: 28px; border: 3px solid #f3f3f3; border-top: 3px solid #10b981; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px auto; }
+  .spinner { width: 28px; height: 28px; border: 3px solid #f3f3f3; border-top: 3px solid #2563eb; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px auto; }
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-  .search-filter-container { background: white; padding: 16px 20px; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 24px; border: 1px solid #e2e8f0; display: flex; gap: 12px; align-items: center; width: 100%; box-sizing: border-box; }
-  .search-bar-wrapper { position: relative; flex: 1; }
-  .main-search-input { width: 100%; padding: 12px 16px 12px 42px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; box-sizing: border-box; background: #f8fafc; color: #1e293b !important; -webkit-text-fill-color: #1e293b !important; outline: none; transition: all 0.2s; }
-  .main-search-input:focus { border-color: #2563eb; background: white; color: #1e293b !important; -webkit-text-fill-color: #1e293b !important; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
-  .search-icon-abs { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); font-size: 15px; color: #94a3b8; pointer-events: none; }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* --- FLUID EXPANDING SEARCH CONTAINER --- */
+  .search-filter-container { background: white; padding: 16px 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(37, 99, 235, 0.04); margin-bottom: 24px; border: 1px solid #e2e8f0; display: flex; gap: 12px; align-items: center; width: 100%; box-sizing: border-box; transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1); position: relative; }
+  .search-bar-wrapper { position: relative; flex: 1; transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
   
-  .filter-drawer { background: white; padding: 20px; border-radius: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.06); margin-bottom: 24px; border: 1px solid #e2e8f0; display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 14px; align-items: flex-end; box-sizing: border-box; }
+  .main-search-input { width: 100%; padding: 12px 16px 12px 44px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 14px; box-sizing: border-box; background: #f8fafc; outline: none; transition: all 0.3s ease; color: #1e293b !important; -webkit-text-fill-color: #1e293b !important; }
+  .main-search-input:focus { border-color: #2563eb; background: white; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12); color: #1e293b !important; -webkit-text-fill-color: #1e293b !important; }
+  .search-icon-abs { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-size: 15px; color: #64748b; pointer-events: none; }
+  
+  /* EXPANDED STATE WHEN CLICKED/FOCUSED */
+  .search-filter-container.expanded { background: #ffffff; box-shadow: 0 12px 35px rgba(37, 99, 235, 0.15); border-color: #2563eb; }
+  .search-filter-container.expanded .search-bar-wrapper { flex: 2; }
+  .search-filter-container.expanded .hide-on-search { display: none !important; }
+
+  /* --- LIVE AUTO-SUGGEST DROPDOWN --- */
+  .search-suggestions-box { position: absolute; top: calc(100% + 8px); left: 0; right: 0; background: white; border: 1px solid #cbd5e1; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 100; max-height: 220px; overflow-y: auto; padding: 6px; box-sizing: border-box; animation: slideDown 0.2s ease-out; }
+  .suggestion-item { padding: 10px 14px; font-size: 14px; color: #334151; cursor: pointer; border-radius: 8px; text-align: left; display: flex; justify-content: space-between; align-items: center; }
+  .suggestion-item:hover { background: #eff6ff; color: #2563eb; font-weight: 500; }
+  .suggestion-tag { font-size: 11px; background: #e2e8f0; color: #64748b; padding: 2px 8px; border-radius: 6px; text-transform: uppercase; }
+
+  .filter-drawer { background: white; padding: 24px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.06); margin-bottom: 24px; border: 1px solid #e2e8f0; display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 16px; align-items: flex-end; box-sizing: border-box; animation: slideDown 0.3s ease-out; }
   .filter-group { display: flex; flex-direction: column; gap: 6px; }
   .filter-label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
-  .filter-select { width: 100%; padding: 11px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: white; color: #1e293b !important; outline: none; cursor: pointer; box-sizing: border-box; }
+  .filter-select { width: 100%; padding: 12px 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; background: white; outline: none; cursor: pointer; box-sizing: border-box; color: #1e293b !important; }
   .filter-select:focus { border-color: #2563eb; }
+
+  /* --- NOT FOUND STATE STYLES --- */
+  .not-found-card { text-align: center; padding: 60px 24px; background: white; border-radius: 20px; border: 1px solid #e2e8f0; margin: 24px 0; box-shadow: 0 4px 20px rgba(0,0,0,0.02); animation: slideDown 0.3s ease-out; width: 100%; box-sizing: border-box; }
+  .not-found-icon { font-size: 48px; margin-bottom: 12px; display: inline-block; }
+  .not-found-title { margin: 0 0 8px 0; font-size: 20px; font-weight: 700; color: #0f172a; }
+  .not-found-text { color: #64748b; font-size: 14px; line-height: 1.5; margin: 0 0 20px 0; max-width: 440px; margin-left: auto; margin-right: auto; }
 
   @keyframes shimmer {
     0% { background-position: -200px 0; }
     100% { background-position: calc(200px + 100%) 0; }
   }
-  .skeleton-card { background: white; border-radius: 16px; border: 1px solid #e2e8f0; padding: 20px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+  .skeleton-card { background: white; border-radius: 20px; border: 1px solid #e2e8f0; padding: 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
   .skeleton-header { display: flex; gap: 16px; align-items: center; }
-  .skeleton-avatar { width: 68px; height: 68px; border-radius: 50%; background: #e2e8f0; background-image: linear-gradient(90deg, #e2e8f0 0px, #f1f5f9 40px, #e2e8f0 80px); background-size: 600px; animation: shimmer 1.5s infinite linear; flex-shrink: 0; }
+  .skeleton-avatar { width: 68px; height: 68px; border-radius: 50%; background: #e2e8f0; flex-shrink: 0; }
   .skeleton-lines { flex: 1; display: flex; flex-direction: column; gap: 8px; }
-  .skeleton-line { height: 14px; border-radius: 4px; background: #e2e8f0; background-image: linear-gradient(90deg, #e2e8f0 0px, #f1f5f9 40px, #e2e8f0 80px); background-size: 600px; animation: shimmer 1.5s infinite linear; }
-  .skeleton-box { height: 44px; border-radius: 10px; background: #e2e8f0; background-image: linear-gradient(90deg, #e2e8f0 0px, #f1f5f9 40px, #e2e8f0 80px); background-size: 600px; animation: shimmer 1.5s infinite linear; }
-  .skeleton-footer { display: flex; gap: 10px; }
-  .skeleton-btn { height: 38px; border-radius: 8px; flex: 1; background: #e2e8f0; background-image: linear-gradient(90deg, #e2e8f0 0px, #f1f5f9 40px, #e2e8f0 80px); background-size: 600px; animation: shimmer 1.5s infinite linear; }
+  .skeleton-line { height: 14px; border-radius: 4px; background: #e2e8f0; }
 
-  .worker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; width: 100%; box-sizing: border-box; }
-  .profile-card { background: white; border-radius: 16px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.04); transition: transform 0.2s ease, box-shadow 0.2s ease; position: relative; z-index: 1; }
-  .profile-card:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,0.08); border-color: #93c5fd; }
+  .worker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; width: 100%; box-sizing: border-box; animation: slideDown 0.3s ease-out; }
+  .profile-card { background: white; border-radius: 20px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.03); transition: transform 0.2s ease, box-shadow 0.2s ease; position: relative; z-index: 1; }
+  .profile-card:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(37, 99, 235, 0.08); border-color: #93c5fd; }
   
-  .profile-card-header { padding: 20px 20px 16px 20px; display: flex; gap: 16px; align-items: flex-start; border-bottom: 1px solid #f1f5f9; background: linear-gradient(to bottom, #ffffff, #f8fafc); text-align: left; }
+  .profile-card-header { padding: 24px 24px 18px 24px; display: flex; gap: 16px; align-items: flex-start; border-bottom: 1px solid #f1f5f9; background: #ffffff; text-align: left; }
   .profile-avatar-wrapper { position: relative; flex-shrink: 0; }
-  .profile-avatar { width: 68px; height: 68px; border-radius: 50%; object-fit: cover; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.08); background: #bfdbfe; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: bold; color: #1d4ed8; }
+  .profile-avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 3px solid #f8fafc; box-shadow: 0 4px 12px rgba(0,0,0,0.06); background: #eff6ff; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: bold; color: #2563eb; }
   
   .profile-info { flex: 1; min-width: 0; text-align: left; }
   .profile-name-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
   .profile-name { margin: 0; font-size: 18px; font-weight: 700; color: #0f172a; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
-  .verified-badge { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; }
+  .verified-badge { background: #dcfce7; color: #166534; padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; }
   
-  .profile-skills { font-size: 14px; font-weight: 600; color: #2563eb; margin: 0 0 4px 0; text-transform: capitalize; text-align: left; display: block; }
+  .profile-skills { font-size: 14px; font-weight: 600; color: #2563eb; margin: 0 0 6px 0; text-transform: capitalize; text-align: left; display: block; }
   .profile-location { font-size: 13px; color: #64748b; margin: 0; display: flex; align-items: center; gap: 4px; text-align: left; }
 
-  .profile-card-body { padding: 16px 20px; flex: 1; display: flex; flex-direction: column; gap: 14px; }
+  .profile-card-body { padding: 20px 24px; flex: 1; display: flex; flex-direction: column; gap: 16px; }
   
-  .profile-metrics { display: grid; grid-template-columns: 1fr 1fr; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; text-align: center; }
+  .profile-metrics { display: grid; grid-template-columns: 1fr 1fr; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; text-align: center; }
   .metric-box:first-child { border-right: 1px solid #e2e8f0; }
   .metric-val { font-size: 15px; font-weight: 700; color: #0f172a; display: block; }
   .metric-lbl { font-size: 10px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
 
-  .profile-bio-box { font-size: 13px; color: #475569; font-style: italic; background: #fdfbf7; border-left: 3px solid #f59e0b; padding: 10px 12px; border-radius: 6px; line-height: 1.4; margin: 0; text-align: left; }
-  .profile-card-footer { padding: 16px 20px; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; gap: 10px; }
+  .profile-bio-box { font-size: 13px; color: #475569; font-style: italic; background: #fdfbf7; border-left: 3px solid #2563eb; padding: 12px 14px; border-radius: 8px; line-height: 1.45; margin: 0; text-align: left; }
+  .profile-card-footer { padding: 20px 24px; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; gap: 12px; }
 
-  .form-card { background: white; padding: 32px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); max-width: 760px; margin: 0 auto; box-sizing: border-box; width: 100%; border: 1px solid #e2e8f0; }
+  .form-card { background: white; padding: 36px; border-radius: 20px; box-shadow: 0 4px 25px rgba(0,0,0,0.04); max-width: 760px; margin: 0 auto; box-sizing: border-box; width: 100%; border: 1px solid #e2e8f0; animation: slideDown 0.3s ease-out; }
   .form-group { margin-bottom: 22px; }
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; box-sizing: border-box; }
   .form-label { display: block; font-weight: 600; margin-bottom: 6px; color: #334151; font-size: 14px; text-align: left; }
-  .form-input { width: 100%; padding: 12px 16px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; box-sizing: border-box; background: #f8fafc; color: #1e293b !important; -webkit-text-fill-color: #1e293b !important; outline: none; }
-  .form-input:focus { border-color: #2563eb; background: white; color: #1e293b !important; -webkit-text-fill-color: #1e293b !important; }
+  .form-input { width: 100%; padding: 12px 16px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 15px; box-sizing: border-box; background: #f8fafc; color: #1e293b !important; -webkit-text-fill-color: #1e293b !important; outline: none; }
+  .form-input:focus { border-color: #2563eb; background: white; color: #1e293b !important; -webkit-text-fill-color: #1e293b !important; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12); }
   .error-text { color: #ef4444; font-size: 12px; margin-top: 4px; display: block; font-weight: 500; text-align: left; }
   
   .multi-select-box { position: relative; width: 100%; user-select: none; box-sizing: border-box; }
-  .multi-select-header { display: flex; flex-wrap: wrap; gap: 6px; min-height: 48px; padding: 8px 14px; border: 1px solid #cbd5e1; border-radius: 10px; background: #f8fafc; cursor: pointer; align-items: center; justify-content: space-between; box-sizing: border-box; }
-  .multi-select-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #cbd5e1; border-radius: 10px; margin-top: 6px; max-height: 200px; overflow-y: auto; z-index: 50; box-shadow: 0 10px 25px rgba(0,0,0,0.1); padding: 10px; display: flex; flex-direction: column; gap: 4px; box-sizing: border-box; text-align: left; }
-  .dropdown-item { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; padding: 8px; color: #475569; border-radius: 6px; }
+  .multi-select-header { display: flex; flex-wrap: wrap; gap: 6px; min-height: 48px; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 12px; background: #f8fafc; cursor: pointer; align-items: center; justify-content: space-between; box-sizing: border-box; color: #1e293b !important; }
+  .multi-select-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #cbd5e1; border-radius: 12px; margin-top: 6px; max-height: 200px; overflow-y: auto; z-index: 50; box-shadow: 0 10px 25px rgba(0,0,0,0.1); padding: 10px; display: flex; flex-direction: column; gap: 4px; box-sizing: border-box; text-align: left; animation: slideDown 0.2s ease-out; }
+  .dropdown-item { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: #475569; border-radius: 8px; padding: 8px; }
+  .dropdown-item:hover { background: #eff6ff; color: #2563eb; }
   .dropdown-item input { width: 16px; height: 16px; cursor: pointer; accent-color: #2563eb; }
   
-  .chip { background: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
-  .chip-close { cursor: pointer; font-weight: bold; color: #1e3a8a; }
+  .chip { background: #dbeafe; color: #1e40af; padding: 5px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+  .chip-close { cursor: pointer; font-weight: bold; color: #1d4ed8; }
   
-  .file-dropzone { border: 2px dashed #cbd5e1; background: #f8fafc; padding: 24px; text-align: center; border-radius: 10px; cursor: pointer; box-sizing: border-box; width: 100%; }
-  .file-icon { font-size: 28px; color: #94a3b8; margin-bottom: 6px; display: block; }
-  .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.65); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); padding: 16px; box-sizing: border-box; }
+  .file-dropzone { border: 2px dashed #cbd5e1; background: #f8fafc; padding: 28px; text-align: center; border-radius: 12px; cursor: pointer; box-sizing: border-box; width: 100%; transition: border-color 0.2s; }
+  .file-dropzone:hover { border-color: #2563eb; }
+  .file-icon { font-size: 32px; color: #64748b; margin-bottom: 8px; display: block; }
+  
+  .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.65); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); padding: 16px; box-sizing: border-box; animation: slideDown 0.2s ease-out; }
 
   @media (max-width: 768px) {
     .top-promo-banner { flex-direction: column; align-items: flex-start; padding: 20px; }
     .top-promo-actions { width: 100%; display: flex; gap: 10px; }
     .top-btn-light { flex: 1; text-align: center; }
+    .filter-drawer { grid-template-columns: 1fr; gap: 12px; padding: 18px; }
   }
 
   @media (max-width: 640px) {
     .app-container { padding: 12px; }
-    .header { padding: 12px 16px; margin-bottom: 16px; }
-    .header-logo { font-size: 20px; }
-    .btn-primary, .btn-secondary { padding: 9px 14px; font-size: 13px; }
+    .header { padding: 12px 18px; margin-bottom: 16px; }
+    .header-logo { font-size: 22px; }
+    .btn-primary, .btn-secondary { padding: 9px 12px; font-size: 13px; }
     .search-filter-container { padding: 12px; gap: 8px; }
-    .filter-drawer { grid-template-columns: 1fr; gap: 10px; padding: 16px; }
-    .form-row { grid-template-columns: 1fr; gap: 0; }
-    .form-card { padding: 20px; }
+    .main-search-input { padding: 10px 12px 10px 38px; font-size: 13px; }
+    .search-icon-abs { left: 12px; }
   }
 `;
 
@@ -156,8 +197,10 @@ export default function WorkerMarketplace() {
   const [appliedCategory, setAppliedCategory] = useState('');
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [showPopup, setShowPopup] = useState(true); // Removable promotional popup
-  const [showBanner, setShowBanner] = useState(true); // Removable top banner
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showPopup, setShowPopup] = useState(true); 
+  const [showBanner, setShowBanner] = useState(true); 
   
   const [detailedWorker, setDetailedWorker] = useState(null); 
   const [selectedWorker, setSelectedWorker] = useState(null); 
@@ -178,6 +221,7 @@ export default function WorkerMarketplace() {
   
   const fileInputRef = useRef(null); 
   const dropdownRef = useRef(null);
+  const searchContainerRef = useRef(null);
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -203,6 +247,10 @@ export default function WorkerMarketplace() {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
+      }
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+        setIsSearchExpanded(false);
+        setShowSuggestions(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -268,15 +316,26 @@ export default function WorkerMarketplace() {
     ).filter(Boolean);
   }, [workers, selectedArea]);
 
+  // --- LIVE SUGGESTIONS COMPUTATION ---
+  const searchSuggestions = useMemo(() => {
+    if (!searchTerm || searchTerm.trim().length === 0) return [];
+    const q = searchTerm.toLowerCase().trim();
+    
+    const matchedNames = workers.map(w => w.name).filter(name => name?.toLowerCase().includes(q));
+    const matchedSkills = standardSkills.concat(dynamicCategories).filter(skill => skill?.toLowerCase().includes(q));
+    const matchedAreas = activeWorkerAreas.filter(area => area?.toLowerCase().includes(q));
+
+    return Array.from(new Set([...matchedNames, ...matchedSkills, ...matchedAreas])).slice(0, 5);
+  }, [searchTerm, workers, activeWorkerAreas, dynamicCategories]);
+
+  // --- FILTER ENGINE ---
   const filteredWorkers = useMemo(() => {
     return workers.filter(worker => {
       const query = appliedSearch.toLowerCase().trim();
+      const queryWords = query.split(/\s+/).filter(Boolean);
       
-      const matchesSearch = 
-        query === '' ||
-        worker.name?.toLowerCase().includes(query) ||
-        worker.skills?.toLowerCase().includes(query) ||
-        worker.location?.toLowerCase().includes(query);
+      const workerText = `${worker.name || ''} ${worker.skills || ''} ${worker.location || ''}`.toLowerCase();
+      const matchesSearch = queryWords.length === 0 || queryWords.every(word => workerText.includes(word));
 
       const workerLoc = worker.location?.toLowerCase().trim() || '';
       const filterArea = appliedArea.toLowerCase().trim();
@@ -294,6 +353,8 @@ export default function WorkerMarketplace() {
     setAppliedSearch(searchTerm);
     setAppliedArea(selectedArea);
     setAppliedCategory(selectedCategory);
+    setShowSuggestions(false);
+    setIsSearchExpanded(false);
     setIsFilterOpen(false);
   };
 
@@ -304,6 +365,8 @@ export default function WorkerMarketplace() {
     setAppliedSearch('');
     setAppliedArea('');
     setAppliedCategory('');
+    setShowSuggestions(false);
+    setIsSearchExpanded(false);
     setIsFilterOpen(false);
   };
 
@@ -425,7 +488,7 @@ export default function WorkerMarketplace() {
     <div className="app-container">
       {/* HEADER */}
       <div className="header">
-        <h1 className="header-logo" onClick={() => setCurrentView('home')}>CallKar</h1>
+        <h1 className="header-logo" onClick={() => setCurrentView('home')}>Call<span>Kar</span></h1>
         <div>
           {currentView === 'home' ? (
             <button className="btn-primary" onClick={() => { setCurrentView('register'); setIsRegSubmitted(false); setErrors({}); }}>
@@ -439,7 +502,7 @@ export default function WorkerMarketplace() {
         </div>
       </div>
 
-      {/* REMOVABLE PROMOTIONAL POPUP (Appears on visit/refresh) */}
+      {/* WELCOME POPUP */}
       {showPopup && currentView === 'home' && (
         <div className="modal-overlay">
           <div className="form-card" style={{ maxWidth: '440px', textAlign: 'center', position: 'relative', padding: '36px 28px' }}>
@@ -464,7 +527,7 @@ export default function WorkerMarketplace() {
       {/* PAGE 1: HOME & SEARCH */}
       {currentView === 'home' && (
         <div>
-          {/* REMOVABLE TOP BANNER FOR JOINING */}
+          {/* TOP BANNER */}
           {showBanner && (
             <div className="top-promo-banner">
               <div className="top-promo-content">
@@ -483,7 +546,8 @@ export default function WorkerMarketplace() {
             </div>
           )}
 
-          <div className="search-filter-container">
+          {/* DYNAMIC EXPANDING SEARCH CONTAINER */}
+          <div className={`search-filter-container ${isSearchExpanded ? 'expanded' : ''}`} ref={searchContainerRef}>
             <div className="search-bar-wrapper">
               <span className="search-icon-abs">🔍</span>
               <input 
@@ -491,21 +555,59 @@ export default function WorkerMarketplace() {
                 className="main-search-input" 
                 placeholder="Search name, service, keyword..." 
                 value={searchTerm} 
-                onChange={(e) => setSearchTerm(e.target.value)} 
-                onKeyDown={(e) => e.key === 'Enter' && handleApplyFilters()}
+                onFocus={() => {
+                  setIsSearchExpanded(true);
+                  setShowSuggestions(true);
+                }}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setAppliedSearch(e.target.value);
+                  setShowSuggestions(true);
+                }} 
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleApplyFilters();
+                  }
+                }}
               />
+
+              {/* LIVE SUGGESTIONS DROPDOWN */}
+              {showSuggestions && searchTerm.trim().length > 0 && searchSuggestions.length > 0 && (
+                <div className="search-suggestions-box">
+                  {searchSuggestions.map((item, idx) => (
+                    <div 
+                      key={idx} 
+                      className="suggestion-item"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setSearchTerm(item);
+                        setAppliedSearch(item);
+                        setShowSuggestions(false);
+                        setIsSearchExpanded(false);
+                      }}
+                    >
+                      <span>{item}</span>
+                      <span className="suggestion-tag">Suggestion</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <button className="btn-primary" onClick={handleApplyFilters}>
+            <button className="btn-primary hide-on-search" onClick={handleApplyFilters}>
               Search
             </button>
 
-            <button className="btn-secondary" onClick={() => setIsFilterOpen(!isFilterOpen)}>
+            <button className="btn-secondary hide-on-search" onClick={() => setIsFilterOpen(!isFilterOpen)}>
               ⚙️ Filters {(appliedArea || appliedCategory) ? '• Active' : ''}
             </button>
 
-            {(appliedArea || appliedCategory || appliedSearch || searchTerm || selectedArea || selectedCategory) && (
-              <button className="btn-secondary" style={{ color: '#ef4444', borderColor: '#fca5a5' }} onClick={handleResetFilters} title="Reset All">
+            {isSearchExpanded ? (
+              <button className="btn-primary" onClick={handleApplyFilters}>
+                Done
+              </button>
+            ) : (appliedArea || appliedCategory || appliedSearch || searchTerm) && (
+              <button className="btn-secondary hide-on-search" style={{ color: '#ef4444', borderColor: '#fca5a5' }} onClick={handleResetFilters} title="Reset All">
                 ✕ Reset
               </button>
             )}
@@ -537,11 +639,11 @@ export default function WorkerMarketplace() {
                 </select>
               </div>
 
-              <button className="btn-primary" style={{ padding: '11px 18px', height: '43px' }} onClick={handleApplyFilters}>
+              <button className="btn-primary" style={{ padding: '12px 18px', height: '44px' }} onClick={handleApplyFilters}>
                 Apply Filters
               </button>
 
-              <button className="btn-secondary" style={{ padding: '11px 16px', height: '43px' }} onClick={handleResetFilters}>
+              <button className="btn-secondary" style={{ padding: '12px 16px', height: '44px' }} onClick={handleResetFilters}>
                 Clear
               </button>
             </div>
@@ -559,20 +661,29 @@ export default function WorkerMarketplace() {
                       <div className="skeleton-line" style={{ width: '55%' }}></div>
                     </div>
                   </div>
-                  <div className="skeleton-box"></div>
-                  <div className="skeleton-footer">
-                    <div className="skeleton-btn"></div>
-                    <div className="skeleton-btn"></div>
+                  <div className="skeleton-box" style={{ height: '44px', background: '#e2e8f0', borderRadius: '8px' }}></div>
+                  <div className="skeleton-footer" style={{ display: 'flex', gap: '10px' }}>
+                    <div className="skeleton-line" style={{ height: '38px', flex: 1, borderRadius: '8px' }}></div>
+                    <div className="skeleton-line" style={{ height: '38px', flex: 1, borderRadius: '8px' }}></div>
                   </div>
                 </div>
               ))}
             </div>
           ) : filteredWorkers.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', margin: '20px 0' }}>
-              <div style={{ fontSize: '42px', marginBottom: '12px' }}>🔍</div>
-              <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', color: '#1e293b' }}>No specialists found</h3>
-              <p style={{ color: '#64748b', fontSize: '14px', margin: '0 0 16px 0' }}>We couldn't find any professionals matching your search or filters.</p>
-              <button className="btn-primary" onClick={handleResetFilters}>Reset Search & Filters</button>
+            /* --- ISOLATED NOT FOUND CARD --- */
+            <div className="not-found-card">
+              <div className="not-found-icon">🔍</div>
+              <h3 className="not-found-title">No specialists found</h3>
+              <p className="not-found-text">
+                {appliedSearch ? (
+                  <>We couldn't find any specialist matching "<strong>{appliedSearch}</strong>". Check for typos or try searching with another keyword.</>
+                ) : (
+                  <>No specialists available for the selected area or category. Try clearing your filters.</>
+                )}
+              </p>
+              <button className="btn-primary" onClick={handleResetFilters}>
+                Reset Search & Filters
+              </button>
             </div>
           ) : (
             <div className="worker-grid">
@@ -679,7 +790,7 @@ export default function WorkerMarketplace() {
                     {selectedSkills.length === 0 && !isOtherSkillChecked ? <span style={{ color: '#9ca3af', fontSize: '14px' }}>Select services...</span> : (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                         {selectedSkills.map(skill => <span key={skill} className="chip">{skill} <span className="chip-close" onClick={(e) => removeSkill(e, skill)}>×</span></span>)}
-                        {isOtherSkillChecked && <span className="chip" style={{ background: '#f3e8ff', color: '#7e22ce' }}>Other <span className="chip-close" onClick={(e) => { e.stopPropagation(); setIsOtherSkillChecked(false); }}>×</span></span>}
+                        {isOtherSkillChecked && <span className="chip" style={{ background: '#dbeafe', color: '#1e40af' }}>Other <span className="chip-close" onClick={(e) => { e.stopPropagation(); setIsOtherSkillChecked(false); }}>×</span></span>}
                       </div>
                     )}
                     <span style={{ color: '#64748b', fontSize: '10px' }}>▼</span>
@@ -707,7 +818,7 @@ export default function WorkerMarketplace() {
                 <label className="form-label">Upload Profile Photo <span style={{color: 'red'}}>*</span></label>
                 <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
                 <div className="file-dropzone" onClick={() => !photoFile && fileInputRef.current.click()} >
-                  {!photoFile ? <div><span className="file-icon">📸</span><p style={{ margin: '0', fontSize: '14px' }}>Click to browse photo</p></div> : <div><span className="file-icon" style={{ color: '#10b981' }}>✅</span><p style={{ margin: '0', fontSize: '14px' }}>{photoFile.name}</p><button type="button" onClick={(e) => { e.stopPropagation(); setPhotoFile(null); }} style={{ marginTop: '8px', background: 'none', border: '1px solid #10b981', color: '#10b981', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }} > Remove </button></div>}
+                  {!photoFile ? <div><span className="file-icon">📸</span><p style={{ margin: '0', fontSize: '14px' }}>Click to browse photo</p></div> : <div><span className="file-icon" style={{ color: '#2563eb' }}>✅</span><p style={{ margin: '0', fontSize: '14px' }}>{photoFile.name}</p><button type="button" onClick={(e) => { e.stopPropagation(); setPhotoFile(null); }} style={{ marginTop: '8px', background: 'none', border: '1px solid #2563eb', color: '#2563eb', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }} > Remove </button></div>}
                 </div>
                 {errors.photo && <span className="error-text">{errors.photo}</span>}
               </div>
@@ -716,7 +827,7 @@ export default function WorkerMarketplace() {
             </form>
           ) : (
             <div style={{ textAlign: 'center', padding: '30px 10px' }}>
-              <div style={{ width: '64px', height: '64px', background: '#dcfce7', color: '#166534', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', margin: '0 auto 12px auto' }}>✓</div>
+              <div style={{ width: '64px', height: '64px', background: '#dbeafe', color: '#1e40af', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', margin: '0 auto 12px auto' }}>✓</div>
               <h3>Application Received!</h3>
               <button className="btn-primary" onClick={() => setCurrentView('home')} style={{ marginTop: '12px' }}>Return to Home</button>
             </div>
@@ -732,9 +843,9 @@ export default function WorkerMarketplace() {
             
             <div style={{ textAlign: 'center', marginBottom: '14px' }}>
               {detailedWorker.photoUrl ? (
-                <img src={detailedWorker.photoUrl} alt={detailedWorker.name} style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #bfdbfe', marginBottom: '8px' }} />
+                <img src={detailedWorker.photoUrl} alt={detailedWorker.name} style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #e2e8f0', marginBottom: '8px' }} />
               ) : (
-                <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: '#bfdbfe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', fontWeight: 'bold', color: '#1d4ed8', margin: '0 auto 8px auto' }}>
+                <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', fontWeight: 'bold', color: '#1e40af', margin: '0 auto 8px auto' }}>
                   {detailedWorker.name ? detailedWorker.name.charAt(0) : 'W'}
                 </div>
               )}
