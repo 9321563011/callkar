@@ -45,7 +45,7 @@ const globalStyles = `
 
   .btn-success { background: #10b981; color: white !important; -webkit-text-fill-color: white !important; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 16px; transition: background 0.2s; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; width: 100%; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); }
   .btn-success:hover { background: #059669; }
-  .btn-success:disabled { background: #94a3b8; cursor: not-allowed; box-shadow: none; }
+  .btn-success:disabled { background: #9ca3af; cursor: not-allowed; box-shadow: none; }
 
   .btn-whatsapp { background: #25D366; color: white !important; -webkit-text-fill-color: white !important; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 16px; transition: all 0.2s; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; width: 100%; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.25); }
   .btn-whatsapp:hover { background: #20ba5a; }
@@ -64,19 +64,14 @@ const globalStyles = `
     to { opacity: 1; transform: translateY(0); }
   }
 
-  /* --- FLUID EXPANDING SEARCH CONTAINER --- */
-  .search-filter-container { background: white; padding: 16px 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(37, 99, 235, 0.04); margin-bottom: 24px; border: 1px solid #e2e8f0; display: flex; gap: 12px; align-items: center; width: 100%; box-sizing: border-box; transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1); position: relative; }
-  .search-bar-wrapper { position: relative; flex: 1; transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+  /* --- PROFESSIONAL ROYAL BLUE SEARCH CONTAINER --- */
+  .search-filter-container { background: white; padding: 16px 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(37, 99, 235, 0.04); margin-bottom: 24px; border: 1px solid #e2e8f0; display: flex; gap: 12px; align-items: center; width: 100%; box-sizing: border-box; position: relative; }
+  .search-bar-wrapper { position: relative; flex: 2; }
   
-  .main-search-input { width: 100%; padding: 12px 16px 12px 44px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 14px; box-sizing: border-box; background: #f8fafc; outline: none; transition: all 0.3s ease; color: #1e293b !important; -webkit-text-fill-color: #1e293b !important; }
+  .main-search-input { width: 100%; padding: 12px 16px 12px 44px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 14px; box-sizing: border-box; background: #f8fafc; outline: none; transition: all 0.2s ease; color: #1e293b !important; -webkit-text-fill-color: #1e293b !important; }
   .main-search-input:focus { border-color: #2563eb; background: white; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12); color: #1e293b !important; -webkit-text-fill-color: #1e293b !important; }
   .search-icon-abs { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-size: 15px; color: #64748b; pointer-events: none; }
   
-  /* EXPANDED STATE WHEN CLICKED/FOCUSED */
-  .search-filter-container.expanded { background: #ffffff; box-shadow: 0 12px 35px rgba(37, 99, 235, 0.15); border-color: #2563eb; }
-  .search-filter-container.expanded .search-bar-wrapper { flex: 2; }
-  .search-filter-container.expanded .hide-on-search { display: none !important; }
-
   /* --- LIVE AUTO-SUGGEST DROPDOWN --- */
   .search-suggestions-box { position: absolute; top: calc(100% + 8px); left: 0; right: 0; background: white; border: 1px solid #cbd5e1; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 100; max-height: 220px; overflow-y: auto; padding: 6px; box-sizing: border-box; animation: slideDown 0.2s ease-out; }
   .suggestion-item { padding: 10px 14px; font-size: 14px; color: #334151; cursor: pointer; border-radius: 8px; text-align: left; display: flex; justify-content: space-between; align-items: center; }
@@ -160,6 +155,9 @@ const globalStyles = `
     .top-promo-actions { width: 100%; display: flex; gap: 10px; }
     .top-btn-light { flex: 1; text-align: center; }
     .filter-drawer { grid-template-columns: 1fr; gap: 12px; padding: 18px; }
+    .search-filter-container { flex-direction: column; align-items: stretch; gap: 10px; padding: 14px; }
+    .search-bar-wrapper { width: 100%; }
+    .search-filter-container button { width: 100%; }
   }
 
   @media (max-width: 640px) {
@@ -197,7 +195,6 @@ export default function WorkerMarketplace() {
   const [appliedCategory, setAppliedCategory] = useState('');
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showPopup, setShowPopup] = useState(true); 
   const [showBanner, setShowBanner] = useState(true); 
@@ -249,7 +246,6 @@ export default function WorkerMarketplace() {
         setIsDropdownOpen(false);
       }
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
-        setIsSearchExpanded(false);
         setShowSuggestions(false);
       }
     };
@@ -328,7 +324,7 @@ export default function WorkerMarketplace() {
     return Array.from(new Set([...matchedNames, ...matchedSkills, ...matchedAreas])).slice(0, 5);
   }, [searchTerm, workers, activeWorkerAreas, dynamicCategories]);
 
-  // --- FILTER ENGINE ---
+  // --- ROBUST LIVE FILTER ENGINE ---
   const filteredWorkers = useMemo(() => {
     return workers.filter(worker => {
       const query = appliedSearch.toLowerCase().trim();
@@ -354,7 +350,6 @@ export default function WorkerMarketplace() {
     setAppliedArea(selectedArea);
     setAppliedCategory(selectedCategory);
     setShowSuggestions(false);
-    setIsSearchExpanded(false);
     setIsFilterOpen(false);
   };
 
@@ -366,7 +361,6 @@ export default function WorkerMarketplace() {
     setAppliedArea('');
     setAppliedCategory('');
     setShowSuggestions(false);
-    setIsSearchExpanded(false);
     setIsFilterOpen(false);
   };
 
@@ -546,8 +540,8 @@ export default function WorkerMarketplace() {
             </div>
           )}
 
-          {/* DYNAMIC EXPANDING SEARCH CONTAINER */}
-          <div className={`search-filter-container ${isSearchExpanded ? 'expanded' : ''}`} ref={searchContainerRef}>
+          {/* BALANCED SEARCH CONTAINER */}
+          <div className="search-filter-container" ref={searchContainerRef}>
             <div className="search-bar-wrapper">
               <span className="search-icon-abs">🔍</span>
               <input 
@@ -555,13 +549,11 @@ export default function WorkerMarketplace() {
                 className="main-search-input" 
                 placeholder="Search name, service, keyword..." 
                 value={searchTerm} 
-                onFocus={() => {
-                  setIsSearchExpanded(true);
-                  setShowSuggestions(true);
-                }}
+                onFocus={() => setShowSuggestions(true)}
                 onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setAppliedSearch(e.target.value);
+                  const val = e.target.value;
+                  setSearchTerm(val);
+                  setAppliedSearch(val); // Instant live sync so search works continuously without breaking
                   setShowSuggestions(true);
                 }} 
                 onKeyDown={(e) => {
@@ -583,7 +575,6 @@ export default function WorkerMarketplace() {
                         setSearchTerm(item);
                         setAppliedSearch(item);
                         setShowSuggestions(false);
-                        setIsSearchExpanded(false);
                       }}
                     >
                       <span>{item}</span>
@@ -594,20 +585,16 @@ export default function WorkerMarketplace() {
               )}
             </div>
 
-            <button className="btn-primary hide-on-search" onClick={handleApplyFilters}>
+            <button className="btn-primary" onClick={handleApplyFilters}>
               Search
             </button>
 
-            <button className="btn-secondary hide-on-search" onClick={() => setIsFilterOpen(!isFilterOpen)}>
+            <button className="btn-secondary" onClick={() => setIsFilterOpen(!isFilterOpen)}>
               ⚙️ Filters {(appliedArea || appliedCategory) ? '• Active' : ''}
             </button>
 
-            {isSearchExpanded ? (
-              <button className="btn-primary" onClick={handleApplyFilters}>
-                Done
-              </button>
-            ) : (appliedArea || appliedCategory || appliedSearch || searchTerm) && (
-              <button className="btn-secondary hide-on-search" style={{ color: '#ef4444', borderColor: '#fca5a5' }} onClick={handleResetFilters} title="Reset All">
+            {(appliedArea || appliedCategory || appliedSearch || searchTerm) && (
+              <button className="btn-secondary" style={{ color: '#ef4444', borderColor: '#fca5a5' }} onClick={handleResetFilters} title="Reset All">
                 ✕ Reset
               </button>
             )}
